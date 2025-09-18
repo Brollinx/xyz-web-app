@@ -17,14 +17,14 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-between bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center gap-y-8 bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       {/* Top: Logo */}
-      <div className="flex-grow flex items-center justify-center pt-16">
+      <div className="flex items-center justify-center">
         <img src={Logo} alt="Company Logo" className="h-24 w-24 object-contain" />
       </div>
 
       {/* Middle: Google-like Search Bar */}
-      <div className="flex-grow flex flex-col items-center justify-center w-full max-w-2xl px-4">
+      <div className="flex flex-col items-center justify-center w-full max-w-2xl px-4">
         <form onSubmit={handleSearchSubmit} className="flex w-full items-center space-x-2">
           <Input
             type="text"
