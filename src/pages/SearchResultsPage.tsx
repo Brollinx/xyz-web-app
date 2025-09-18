@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import { GOOGLE_MAPS_API_KEY } from "@/config";
 import { toast } from "sonner";
+import { supabase } from "@/lib/supabase"; // Import Supabase client
 
 const containerStyle = {
   width: "100%",
@@ -44,6 +45,7 @@ const SearchResultsPage = () => {
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [currentCenter, setCurrentCenter] = useState(defaultCenter);
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
+  const [stores, setStores] = useState<Store[]>(mockStores); // State for stores, initially mock
   const mapRef = useRef<google.maps.Map | null>(null);
 
   const { isLoaded, loadError } = useLoadScript({
@@ -72,6 +74,64 @@ const SearchResultsPage = () => {
       toast.warning("Geolocation is not supported by your browser. Showing default center (Lagos).");
     }
   }, []);
+
+  useEffect(() => {
+    const fetchStores = async () => {
+      if (!searchQuery) {
+        setStores(mockStores); // Fallback to mock if no query
+        return;
+      }
+
+      try {
+        // Assuming 'products' table has 'name' and 'store_id'
+        // And 'stores' table has 'id', 'name', 'address', 'latitude', 'longitude'
+        const { data, error } = await supabase
+          .from('products')
+          .select(`
+            stores (
+              id,
+              name,
+              address,
+              latitude,
+              longitude
+            )
+          `)
+          .ilike('name', `%${searchQuery}%`);
+
+        if (error) {
+          console.error("Error fetching products from Supabase:", error);
+          toast.error("Failed to fetch stores from Supabase. Showing mock data.");
+          setStores(mockStores);
+          return;
+        }
+
+        const fetchedStores: Store[] = data
+          .map((item: any) => item.stores)
+          .filter((store: any) => store !== null) // Filter out null stores if any
+          .map((store: any) => ({
+            id: store.id,
+            name: store.name,
+            address: store.address,
+            lat: store.latitude,
+            lng: store.longitude,
+          }));
+
+        if (fetchedStores.length > 0) {
+          setStores(fetchedStores);
+          toast.success(`Found ${fetchedStores.length} stores for "${searchQuery}"`);
+        } else {
+          setStores(mockStores); // Fallback to mock if Supabase returns no results
+          toast.info(`No stores found in Supabase for "${searchQuery}". Showing mock data.`);
+        }
+      } catch (error) {
+        console.error("Unexpected error fetching stores:", error);
+        toast.error("An unexpected error occurred. Showing mock data.");
+        setStores(mockStores);
+      }
+    };
+
+    fetchStores();
+  }, [searchQuery]); // Re-fetch when searchQuery changes
 
   const onLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
@@ -108,7 +168,7 @@ const SearchResultsPage = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <Button type="submit">
+          <Button type="submit" onClick={() => { /* Trigger search if needed, currently updates on change */ }}>
             <Search className="h-4 w-4 mr-2" /> Search
           </Button>
         </div>
@@ -124,7 +184,7 @@ const SearchResultsPage = () => {
             onLoad={onLoad}
             onUnmount={onUnmount}
           >
-            {mockStores.map((store) => (
+            {stores.map((store) => (
               <Marker
                 key={store.id}
                 position={{ lat: store.lat, lng: store.lng }}
@@ -155,16 +215,20 @@ const SearchResultsPage = () => {
             <CardContent className="flex-grow p-0">
               <ScrollArea className="h-full w-full">
                 <div className="p-4 space-y-3">
-                  {mockStores.map((store) => (
-                    <div
-                      key={store.id}
-                      className="p-3 border rounded-md hover:bg-gray-100 cursor-pointer transition-colors"
-                      onClick={() => handleStoreListItemClick(store)}
-                    >
-                      <h4 className="font-semibold">{store.name}</h4>
-                      <p className="text-sm text-gray-600">{store.address}</p>
-                    </div>
-                  ))}
+                  {stores.length > 0 ? (
+                    stores.map((store) => (
+                      <div
+                        key={store.id}
+                        className="p-3 border rounded-md hover:bg-gray-100 cursor-pointer transition-colors"
+                        onClick={() => handleStoreListItemClick(store)}
+                      >
+                        <h4 className="font-semibold">{store.name}</h4>
+                        <p className="text-sm text-gray-600">{store.address}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-center text-gray-500 mt-8">No stores found nearby.</p>
+                  )}
                 </div>
               </ScrollArea>
             </CardContent>
