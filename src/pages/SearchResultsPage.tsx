@@ -20,24 +20,14 @@ const defaultCenter = {
   lng: 3.3792, // Lagos, Nigeria longitude
 };
 
+// Updated Store interface to match Supabase schema
 interface Store {
   id: string;
-  name: string;
+  store_name: string; // Matches 'store_name' column in Supabase
   address: string;
-  lat: number;
-  lng: number;
+  latitude: number; // Matches 'latitude' column in Supabase
+  longitude: number; // Matches 'longitude' column in Supabase
 }
-
-const mockStores: Store[] = [
-  { id: "1", name: "XYZ Pharmacy", address: "123 Main St, Lagos", lat: 6.5244 + 0.01, lng: 3.3792 + 0.01 },
-  { id: "2", name: "XYZ Mart", address: "456 Market Rd, Lagos", lat: 6.5244 - 0.01, lng: 3.3792 + 0.02 },
-  { id: "3", name: "Local Shop", address: "789 Side Ave, Lagos", lat: 6.5244 + 0.02, lng: 3.3792 - 0.01 },
-  { id: "4", name: "Tech Gadgets", address: "101 Innovation Hub, Lagos", lat: 6.5244 + 0.03, lng: 3.3792 + 0.03 },
-  { id: "5", name: "Fashion Boutique", address: "202 Style Blvd, Lagos", lat: 6.5244 - 0.02, lng: 3.3792 - 0.02 },
-  { id: "6", name: "Book Nook", address: "303 Reading Ln, Lagos", lat: 6.5244 + 0.015, lng: 3.3792 - 0.015 },
-  { id: "7", name: "Coffee Corner", address: "404 Brew St, Lagos", lat: 6.5244 - 0.005, lng: 3.3792 + 0.005 },
-  { id: "8", name: "Fresh Produce", address: "505 Farm Rd, Lagos", lat: 6.5244 + 0.025, lng: 3.3792 + 0.015 },
-];
 
 const SearchResultsPage = () => {
   const [searchParams] = useSearchParams();
@@ -45,7 +35,7 @@ const SearchResultsPage = () => {
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [currentCenter, setCurrentCenter] = useState(defaultCenter);
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
-  const [stores, setStores] = useState<Store[]>(mockStores); // State for stores, initially mock
+  const [stores, setStores] = useState<Store[]>([]); // Initialize with empty array, no mock data
   const mapRef = useRef<google.maps.Map | null>(null);
 
   const { isLoaded, loadError } = useLoadScript({
@@ -77,56 +67,88 @@ const SearchResultsPage = () => {
 
   useEffect(() => {
     const fetchStores = async () => {
-      if (!searchQuery) {
-        setStores(mockStores); // Fallback to mock if no query
-        return;
-      }
-
       try {
-        // Assuming 'products' table has 'name' and 'store_id'
-        // And 'stores' table has 'id', 'name', 'address', 'latitude', 'longitude'
-        const { data, error } = await supabase
-          .from('products')
-          .select(`
-            stores (
-              id,
-              name,
-              address,
-              latitude,
-              longitude
-            )
-          `)
-          .ilike('name', `%${searchQuery}%`);
+        if (searchQuery) {
+          // If there's a search query, filter by products and then get associated stores
+          const { data: productData, error: productError } = await supabase
+            .from('products')
+            .select(`
+              store_id,
+              stores (
+                id,
+                store_name,
+                address,
+                latitude,
+                longitude
+              )
+            `)
+            .ilike('name', `%${searchQuery}%`)
+            .eq('is_active', true);
 
-        if (error) {
-          console.error("Error fetching products from Supabase:", error);
-          toast.error("Failed to fetch stores from Supabase. Showing mock data.");
-          setStores(mockStores);
-          return;
-        }
+          if (productError) {
+            console.error("Error fetching products for search:", productError);
+            toast.error("Failed to fetch products. Please try again.");
+            setStores([]);
+            return;
+          }
 
-        const fetchedStores: Store[] = data
-          .map((item: any) => item.stores)
-          .filter((store: any) => store !== null) // Filter out null stores if any
-          .map((store: any) => ({
+          const uniqueStoreIds = new Set<string>();
+          const fetchedStores: Store[] = [];
+
+          productData.forEach((item: any) => {
+            if (item.stores && item.stores.latitude !== null && item.stores.longitude !== null && !uniqueStoreIds.has(item.stores.id)) {
+              uniqueStoreIds.add(item.stores.id);
+              fetchedStores.push({
+                id: item.stores.id,
+                store_name: item.stores.store_name,
+                address: item.stores.address,
+                latitude: item.stores.latitude,
+                longitude: item.stores.longitude,
+              });
+            }
+          });
+          setStores(fetchedStores);
+          if (fetchedStores.length > 0) {
+            toast.success(`Found ${fetchedStores.length} stores for "${searchQuery}"`);
+          } else {
+            toast.info(`No stores found for "${searchQuery}".`);
+          }
+
+        } else {
+          // If no search query, fetch all active stores
+          const { data, error } = await supabase
+            .from('stores')
+            .select('id, store_name, address, latitude, longitude')
+            .eq('is_active', true) // Only fetch active stores
+            .not('latitude', 'is', null) // Ensure latitude is not null
+            .not('longitude', 'is', null); // Ensure longitude is not null
+
+          if (error) {
+            console.error("Error fetching stores from Supabase:", error);
+            toast.error("Failed to fetch stores. Please try again.");
+            setStores([]);
+            return;
+          }
+
+          const fetchedStores: Store[] = data.map((store: any) => ({
             id: store.id,
-            name: store.name,
+            store_name: store.store_name,
             address: store.address,
-            lat: store.latitude,
-            lng: store.longitude,
+            latitude: store.latitude,
+            longitude: store.longitude,
           }));
 
-        if (fetchedStores.length > 0) {
           setStores(fetchedStores);
-          toast.success(`Found ${fetchedStores.length} stores for "${searchQuery}"`);
-        } else {
-          setStores(mockStores); // Fallback to mock if Supabase returns no results
-          toast.info(`No stores found in Supabase for "${searchQuery}". Showing mock data.`);
+          if (fetchedStores.length > 0) {
+            toast.success(`Found ${fetchedStores.length} active stores.`);
+          } else {
+            toast.info("No active stores found.");
+          }
         }
       } catch (error) {
         console.error("Unexpected error fetching stores:", error);
-        toast.error("An unexpected error occurred. Showing mock data.");
-        setStores(mockStores);
+        toast.error("An unexpected error occurred.");
+        setStores([]);
       }
     };
 
@@ -143,9 +165,9 @@ const SearchResultsPage = () => {
 
   const handleMarkerClick = (store: Store) => {
     setSelectedStore(store);
-    setCurrentCenter({ lat: store.lat, lng: store.lng });
+    setCurrentCenter({ lat: store.latitude, lng: store.longitude });
     if (mapRef.current) {
-      mapRef.current.panTo({ lat: store.lat, lng: store.lng });
+      mapRef.current.panTo({ lat: store.latitude, lng: store.longitude });
     }
   };
 
@@ -168,7 +190,7 @@ const SearchResultsPage = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <Button type="submit" onClick={() => { /* Trigger search if needed, currently updates on change */ }}>
+          <Button type="submit" onClick={() => { /* Search is triggered by onChange, no explicit click needed */ }}>
             <Search className="h-4 w-4 mr-2" /> Search
           </Button>
         </div>
@@ -187,18 +209,18 @@ const SearchResultsPage = () => {
             {stores.map((store) => (
               <Marker
                 key={store.id}
-                position={{ lat: store.lat, lng: store.lng }}
+                position={{ lat: store.latitude, lng: store.longitude }}
                 onClick={() => handleMarkerClick(store)}
               />
             ))}
 
             {selectedStore && (
               <InfoWindow
-                position={{ lat: selectedStore.lat, lng: selectedStore.lng }}
+                position={{ lat: selectedStore.latitude, lng: selectedStore.longitude }}
                 onCloseClick={() => setSelectedStore(null)}
               >
                 <div className="p-2">
-                  <h3 className="font-bold text-lg">{selectedStore.name}</h3>
+                  <h3 className="font-bold text-lg">{selectedStore.store_name}</h3>
                   <p className="text-sm">{selectedStore.address}</p>
                 </div>
               </InfoWindow>
@@ -222,7 +244,7 @@ const SearchResultsPage = () => {
                         className="p-3 border rounded-md hover:bg-gray-100 cursor-pointer transition-colors"
                         onClick={() => handleStoreListItemClick(store)}
                       >
-                        <h4 className="font-semibold">{store.name}</h4>
+                        <h4 className="font-semibold">{store.store_name}</h4>
                         <p className="text-sm text-gray-600">{store.address}</p>
                       </div>
                     ))
