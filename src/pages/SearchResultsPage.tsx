@@ -26,6 +26,7 @@ interface ProductWithStoreInfo {
   productName: string;
   productPrice: number;
   stockQuantity: number;
+  productImageUrl?: string; // Added for product image
   storeId: string;
   storeName: string;
   storeAddress: string;
@@ -69,7 +70,8 @@ const SearchResultsPage = () => {
         },
         (error) => {
           console.error("Error getting user location:", error);
-          toast.warning("Could not get your location. Showing default center (Lagos).");
+          // Updated toast message for location denial
+          toast.warning("Location access denied. Distances will not be shown. Showing default center (Lagos).");
           setUserLocation(null);
         },
         { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
@@ -92,6 +94,7 @@ const SearchResultsPage = () => {
             price,
             stock_quantity,
             is_active,
+            image_url,  // Fetch product image URL
             stores (
               id,
               store_name,
@@ -134,6 +137,7 @@ const SearchResultsPage = () => {
               productName: product.name,
               productPrice: product.price,
               stockQuantity: product.stock_quantity,
+              productImageUrl: product.image_url, // Assign fetched image URL
               storeId: product.stores.id,
               storeName: product.stores.store_name,
               storeAddress: product.stores.address,
@@ -306,24 +310,35 @@ const SearchResultsPage = () => {
                       <div
                         key={result.productId} // Use product ID for unique key
                         className={cn(
-                          "p-3 border rounded-md hover:bg-gray-100 cursor-pointer transition-colors",
+                          "p-3 border rounded-md hover:bg-gray-100 cursor-pointer transition-colors flex items-center", // Added flex and items-center
                           selectedProductResult?.productId === result.productId && "bg-blue-50 border-blue-500 ring-2 ring-blue-200"
                         )}
                         onClick={() => handleProductListItemClick(result)}
                       >
-                        <h4 className="font-semibold text-lg">{result.productName}</h4>
-                        <p className="text-sm text-gray-700">{result.storeName}</p>
-                        <p className="text-sm text-gray-600">{result.storeAddress}</p>
-                        <p className="text-md font-bold text-green-600">Price: ${result.productPrice.toFixed(2)}</p>
-                        <p className="text-sm">
-                          Stock:{" "}
-                          <span className={result.stockQuantity > 0 ? "text-green-500" : "text-red-500"}>
-                            {result.stockQuantity > 0 ? "In Stock" : "Out of Stock"}
-                          </span>
-                        </p>
-                        {result.distance !== undefined && (
-                          <p className="text-sm text-gray-500">Distance: {result.distance} km</p>
+                        {result.productImageUrl && (
+                          <img
+                            src={result.productImageUrl}
+                            alt={result.productName}
+                            className="h-16 w-16 object-cover rounded-md mr-4 flex-shrink-0" // Image on the left
+                          />
                         )}
+                        <div className="flex-grow"> {/* Text content on the right */}
+                          <h4 className="font-semibold text-lg">{result.productName}</h4>
+                          <p className="text-sm text-gray-700">{result.storeName}</p>
+                          <p className="text-sm text-gray-600">{result.storeAddress}</p>
+                          <p className="text-md font-bold text-green-600">Price: ${result.productPrice.toFixed(2)}</p>
+                          <p className="text-sm">
+                            Stock:{" "}
+                            <span className={result.stockQuantity > 0 ? "text-green-500" : "text-red-500"}>
+                              {result.stockQuantity > 0 ? "In Stock" : "Out of Stock"}
+                            </span>
+                          </p>
+                          {userLocation === null ? ( // Show message if location is denied
+                            <p className="text-sm text-red-500">Location access denied. Distances not shown.</p>
+                          ) : result.distance !== undefined ? (
+                            <p className="text-sm text-gray-500">Distance: {result.distance} km</p>
+                          ) : null}
+                        </div>
                       </div>
                     ))
                   ) : (
