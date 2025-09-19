@@ -1,11 +1,11 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { GoogleMap, useLoadScript, Marker, InfoWindow } from "@react-google-maps/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, User, Loader2 } from "lucide-react";
+import { Search, MapPin, Loader2 } from "lucide-react";
 import { GOOGLE_MAPS_API_KEY } from "@/config";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -44,6 +44,7 @@ type LocationStatus = "loading" | "success" | "denied";
 
 const SearchResultsPage = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const initialSearchQuery = searchParams.get("query") || "";
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [currentCenter, setCurrentCenter] = useState(defaultCenter);
@@ -176,7 +177,8 @@ const SearchResultsPage = () => {
     }
   };
 
-  const handleProductListItemClick = (productResult: ProductWithStoreInfo) => {
+  const handleMapIconClick = (e: React.MouseEvent, productResult: ProductWithStoreInfo) => {
+    e.stopPropagation(); // Prevent navigation
     handleMarkerClick(productResult);
   };
 
@@ -288,41 +290,48 @@ const SearchResultsPage = () => {
                       <div
                         key={result.productId}
                         className={cn(
-                          "p-3 border rounded-md hover:bg-gray-100 cursor-pointer transition-colors flex items-center",
+                          "p-3 border rounded-md hover:bg-gray-100 cursor-pointer transition-colors flex items-center justify-between",
                           selectedProductResult?.productId === result.productId && "bg-blue-50 border-blue-500 ring-2 ring-blue-200"
                         )}
-                        onClick={() => handleProductListItemClick(result)}
+                        onClick={() => navigate(`/store/${result.storeId}`)}
                       >
-                        {result.productImageUrl && (
-                          <img
-                            src={result.productImageUrl}
-                            alt={result.productName}
-                            className="h-16 w-16 object-cover rounded-md mr-4 flex-shrink-0"
-                          />
-                        )}
-                        <div className="flex-grow">
-                          <h4 className="font-semibold text-lg">{result.productName}</h4>
-                          <p className="text-sm text-gray-700">{result.storeName}</p>
-                          <p className="text-sm text-gray-600">{result.storeAddress}</p>
-                          <p className="text-md font-bold text-green-600">Price: ${result.productPrice.toFixed(2)}</p>
-                          <p className="text-sm">
-                            Stock:{" "}
-                            <span className={result.stockQuantity > 0 ? "text-green-500" : "text-red-500"}>
-                              {result.stockQuantity > 0 ? "In Stock" : "Out of Stock"}
-                            </span>
-                          </p>
-                          {locationStatus === "loading" && (
-                            <p className="text-sm text-gray-500 flex items-center">
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Getting your location to calculate distance...
+                        <div className="flex items-center flex-grow">
+                          {result.productImageUrl && (
+                            <img
+                              src={result.productImageUrl}
+                              alt={result.productName}
+                              className="h-16 w-16 object-cover rounded-md mr-4 flex-shrink-0"
+                            />
+                          )}
+                          <div className="flex-grow">
+                            <h4 className="font-semibold text-lg">{result.productName}</h4>
+                            <p className="text-sm text-gray-700">{result.storeName}</p>
+                            <p className="text-sm text-gray-600">{result.storeAddress}</p>
+                            <p className="text-md font-bold text-green-600">Price: ${result.productPrice.toFixed(2)}</p>
+                            <p className="text-sm">
+                              Stock:{" "}
+                              <span className={result.stockQuantity > 0 ? "text-green-500" : "text-red-500"}>
+                                {result.stockQuantity > 0 ? "In Stock" : "Out of Stock"}
+                              </span>
                             </p>
-                          )}
-                          {locationStatus === "success" && result.distance !== undefined && (
-                            <p className="text-sm text-gray-500">Distance: {result.distance} km</p>
-                          )}
-                          {locationStatus === "denied" && (
-                            <p className="text-sm text-red-500">Location access denied. Distances not shown.</p>
-                          )}
+                            {locationStatus === "loading" && (
+                              <p className="text-sm text-gray-500 flex items-center">
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Getting your location to calculate distance...
+                              </p>
+                            )}
+                            {locationStatus === "success" && result.distance !== undefined && (
+                              <p className="text-sm text-gray-500">Distance: {result.distance} km</p>
+                            )}
+                            {locationStatus === "denied" && (
+                              <p className="text-sm text-red-500">Location access denied. Distances not shown.</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="pl-2">
+                          <Button variant="ghost" size="icon" onClick={(e) => handleMapIconClick(e, result)}>
+                            <MapPin className="h-6 w-6 text-blue-600" />
+                          </Button>
                         </div>
                       </div>
                     ))
