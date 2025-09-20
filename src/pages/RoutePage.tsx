@@ -9,10 +9,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Feature, LineString } from 'geojson';
 
+interface LngLat {
+  lng: number;
+  lat: number;
+}
+
 const RoutePage = () => {
   const [searchParams] = useSearchParams();
-  const [userLocation, setUserLocation] = useState<google.maps.LatLngLiteral | null>(null);
-  const [destination, setDestination] = useState<google.maps.LatLngLiteral | null>(null);
+  const [userLocation, setUserLocation] = useState<LngLat | null>(null);
+  const [destination, setDestination] = useState<LngLat | null>(null);
   const [routeGeoJson, setRouteGeoJson] = useState<Feature<LineString> | null>(null);
   const [loading, setLoading] = useState(true);
   const [distance, setDistance] = useState<string | null>(null);
