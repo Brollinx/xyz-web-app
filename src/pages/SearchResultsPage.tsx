@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import Map, { Marker, Popup, ViewState } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, Loader2, AlertTriangle } from "lucide-react";
+import { Search, MapPin, Loader2 } from "lucide-react";
 import { MAPBOX_TOKEN } from "@/config";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -15,7 +15,7 @@ import { calculateDistance, cn } from "@/lib/utils";
 const defaultCenter = {
   latitude: 6.5244, // Lagos, Nigeria latitude
   longitude: 3.3792, // Lagos, Nigeria longitude
-  zoom: 11,
+  zoom: 10,
 };
 
 interface ProductWithStoreInfo {
@@ -51,10 +51,6 @@ const SearchResultsPage = () => {
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("loading");
 
   useEffect(() => {
-    if (!MAPBOX_TOKEN) {
-      toast.error("Mapbox token is missing. Please add VITE_MAPBOX_TOKEN to your .env file.");
-    }
-
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -63,66 +59,92 @@ const SearchResultsPage = () => {
             lng: position.coords.longitude,
           };
           setUserLocation(userLoc);
-          setViewState((prev) => ({ ...prev, latitude: userLoc.lat, longitude: userLoc.lng }));
+          setViewState({ latitude: userLoc.lat, longitude: userLoc.lng, zoom: 12 });
           setLocationStatus("success");
           toast.success("Map centered on your current location!");
         },
-        () => {
+        (error) => {
+          console.error("Error getting user location:", error);
           setLocationStatus("denied");
-          toast.warning("Location access denied. Distances will not be shown.");
-        }
+          toast.warning("Location access denied. Distances will not be shown. Showing default center (Lagos).");
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
       );
     } else {
       setLocationStatus("denied");
-      toast.warning("Geolocation is not supported by your browser.");
+      toast.warning("Geolocation is not supported by your browser. Showing default center (Lagos).");
     }
   }, []);
 
   useEffect(() => {
     const fetchProductResults = async () => {
-      let query = supabase
-        .from('products')
-        .select(`id, name, price, stock_quantity, is_active, image_url, stores (id, store_name, address, latitude, longitude, is_active)`)
-        .eq('is_active', true);
+      try {
+        let query = supabase
+          .from('products')
+          .select(`
+            id, name, price, stock_quantity, is_active, image_url,
+            stores (id, store_name, address, latitude, longitude, is_active)
+          `)
+          .eq('is_active', true);
 
-      if (searchQuery) {
-        query = query.ilike('name', `%${searchQuery}%`);
+        if (searchQuery) {
+          query = query.ilike('name', `%${searchQuery}%`);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.error("Error fetching product results:", error);
+          toast.error("Failed to fetch product results. Please try again.");
+          setProductResults([]);
+          return;
+        }
+
+        const fetchedResults: ProductWithStoreInfo[] = data
+          .filter((product: any) => product.stores && product.stores.is_active && product.stores.latitude !== null && product.stores.longitude !== null)
+          .map((product: any) => ({
+            productId: product.id,
+            productName: product.name,
+            productPrice: product.price,
+            stockQuantity: product.stock_quantity,
+            productImageUrl: product.image_url,
+            storeId: product.stores.id,
+            storeName: product.stores.store_name,
+            storeAddress: product.stores.address,
+            storeLatitude: product.stores.latitude,
+            storeLongitude: product.stores.longitude,
+          }));
+
+        setProductResults(fetchedResults);
+        if (fetchedResults.length > 0) {
+          toast.success(`Found ${fetchedResults.length} matching products.`);
+        } else {
+          toast.info(`No products found for "${searchQuery}".`);
+        }
+      } catch (error) {
+        console.error("Unexpected error fetching product results:", error);
+        toast.error("An unexpected error occurred.");
+        setProductResults([]);
       }
-
-      const { data, error } = await query;
-
-      if (error) {
-        toast.error("Failed to fetch product results.");
-        return;
-      }
-
-      const fetchedResults: ProductWithStoreInfo[] = data
-        .filter((product: any) => product.stores && product.stores.is_active && product.stores.latitude !== null && product.stores.longitude !== null)
-        .map((product: any) => ({
-          productId: product.id,
-          productName: product.name,
-          productPrice: product.price,
-          stockQuantity: product.stock_quantity,
-          productImageUrl: product.image_url,
-          storeId: product.stores.id,
-          storeName: product.stores.store_name,
-          storeAddress: product.stores.address,
-          storeLatitude: product.stores.latitude,
-          storeLongitude: product.stores.longitude,
-        }));
-
-      setProductResults(fetchedResults);
     };
 
     fetchProductResults();
   }, [searchQuery]);
 
   const processedProductResults = useMemo(() => {
-    if (locationStatus !== "success" || !userLocation) return productResults;
+    if (locationStatus !== "success" || !userLocation || productResults.length === 0) {
+      return productResults;
+    }
+
     return productResults
       .map(product => ({
         ...product,
-        distance: calculateDistance(userLocation.lat, userLocation.lng, product.storeLatitude, product.storeLongitude),
+        distance: calculateDistance(
+          userLocation.lat,
+          userLocation.lng,
+          product.storeLatitude,
+          product.storeLongitude
+        ),
       }))
       .sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
   }, [productResults, userLocation, locationStatus]);
@@ -143,39 +165,35 @@ const SearchResultsPage = () => {
 
   const uniqueStoresForMarkers = useMemo(() => {
     const seenStoreIds = new Set<string>();
-    return processedProductResults.filter(result => {
+    return processedProductResults.reduce((acc, result) => {
       if (!seenStoreIds.has(result.storeId)) {
         seenStoreIds.add(result.storeId);
-        return true;
+        acc.push({
+          id: result.storeId,
+          lat: result.storeLatitude,
+          lng: result.storeLongitude,
+          name: result.storeName,
+        });
       }
-      return false;
-    });
+      return acc;
+    }, [] as { id: string; lat: number; lng: number; name: string }[]);
   }, [processedProductResults]);
-
-  if (!MAPBOX_TOKEN) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center p-8 bg-yellow-50 rounded-lg max-w-md">
-          <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-yellow-800 mb-2">Mapbox Configuration Required</h2>
-          <p className="text-yellow-700 mb-4">
-            Mapbox token is missing. Please add your VITE_MAPBOX_TOKEN to the .env file.
-          </p>
-          <p className="text-sm text-yellow-600">
-            Using a default token for demonstration purposes.
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex flex-col items-center bg-gray-50 p-4">
       <div className="w-full max-w-4xl text-center space-y-6 mb-8">
         <h1 className="text-4xl font-bold text-gray-900">Search Results for "{initialSearchQuery}"</h1>
         <div className="flex w-full items-center space-x-2 mx-auto">
-          <Input type="text" placeholder="Refine your search..." className="flex-grow" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-          <Button type="submit"><Search className="h-4 w-4 mr-2" /> Search</Button>
+          <Input
+            type="text"
+            placeholder="Refine your search..."
+            className="flex-grow"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <Button type="submit">
+            <Search className="h-4 w-4 mr-2" /> Search
+          </Button>
         </div>
       </div>
 
@@ -191,26 +209,33 @@ const SearchResultsPage = () => {
             {userLocation && (
               <Marker longitude={userLocation.lng} latitude={userLocation.lat} color="#4285F4" />
             )}
-            {uniqueStoresForMarkers.map((result) => (
+
+            {uniqueStoresForMarkers.map((store) => (
               <Marker
-                key={result.storeId}
-                longitude={result.storeLongitude}
-                latitude={result.storeLatitude}
-                onClick={() => handleMarkerClick(result)}
+                key={store.id}
+                longitude={store.lng}
+                latitude={store.lat}
+                onClick={(e) => {
+                  e.originalEvent.stopPropagation();
+                  const firstProductInStore = processedProductResults.find(pr => pr.storeId === store.id);
+                  if (firstProductInStore) handleMarkerClick(firstProductInStore);
+                }}
               />
             ))}
+
             {selectedProductResult && (
               <Popup
                 longitude={selectedProductResult.storeLongitude}
                 latitude={selectedProductResult.storeLatitude}
                 onClose={() => setSelectedProductResult(null)}
                 closeOnClick={false}
-                anchor="top"
+                anchor="bottom"
               >
                 <div className="p-1">
-                  <h3 className="font-bold">{selectedProductResult.storeName}</h3>
-                  <p className="text-xs">{selectedProductResult.productName}</p>
-                  <p className="text-xs font-semibold">${selectedProductResult.productPrice.toFixed(2)}</p>
+                  <h3 className="font-bold text-md">{selectedProductResult.storeName}</h3>
+                  <p className="text-xs">{selectedProductResult.storeAddress}</p>
+                  <p className="text-xs font-medium mt-1">{selectedProductResult.productName}</p>
+                  <p className="text-xs">Price: ${selectedProductResult.productPrice.toFixed(2)}</p>
                 </div>
               </Popup>
             )}
@@ -219,29 +244,65 @@ const SearchResultsPage = () => {
 
         <div className="md:col-span-1">
           <Card className="h-[400px] flex flex-col">
-            <CardHeader><CardTitle>Matching Products & Stores</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Matching Products & Stores</CardTitle>
+            </CardHeader>
             <CardContent className="flex-grow p-0">
               <ScrollArea className="h-full w-full">
                 <div className="p-4 space-y-3">
-                  {processedProductResults.map((result) => (
-                    <div
-                      key={result.productId}
-                      className={cn("p-3 border rounded-md hover:bg-gray-100 cursor-pointer transition-colors flex items-center justify-between", selectedProductResult?.productId === result.productId && "bg-blue-50 border-blue-500")}
-                      onClick={() => navigate(`/store/${result.storeId}?product=${result.productId}`)}
-                    >
-                      <div className="flex items-center flex-grow">
-                        {result.productImageUrl && <img src={result.productImageUrl} alt={result.productName} className="h-16 w-16 object-cover rounded-md mr-4" />}
-                        <div className="flex-grow">
-                          <h4 className="font-semibold">{result.productName}</h4>
-                          <p className="text-sm text-gray-700">{result.storeName}</p>
-                          <p className="text-md font-bold text-green-600">${result.productPrice.toFixed(2)}</p>
-                          {locationStatus === "loading" && <p className="text-sm text-gray-500 flex items-center"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Calculating distance...</p>}
-                          {locationStatus === "success" && result.distance !== undefined && <p className="text-sm text-gray-500">Distance: {result.distance} km</p>}
+                  {processedProductResults.length > 0 ? (
+                    processedProductResults.map((result) => (
+                      <div
+                        key={result.productId}
+                        className={cn(
+                          "p-3 border rounded-md hover:bg-gray-100 cursor-pointer transition-colors flex items-center justify-between",
+                          selectedProductResult?.productId === result.productId && "bg-blue-50 border-blue-500 ring-2 ring-blue-200"
+                        )}
+                        onClick={() => navigate(`/store/${result.storeId}?product=${result.productId}`)}
+                      >
+                        <div className="flex items-center flex-grow">
+                          {result.productImageUrl && (
+                            <img
+                              src={result.productImageUrl}
+                              alt={result.productName}
+                              className="h-16 w-16 object-cover rounded-md mr-4 flex-shrink-0"
+                            />
+                          )}
+                          <div className="flex-grow">
+                            <h4 className="font-semibold text-lg">{result.productName}</h4>
+                            <p className="text-sm text-gray-700">{result.storeName}</p>
+                            <p className="text-sm text-gray-600">{result.storeAddress}</p>
+                            <p className="text-md font-bold text-green-600">Price: ${result.productPrice.toFixed(2)}</p>
+                            <p className="text-sm">
+                              Stock:{" "}
+                              <span className={result.stockQuantity > 0 ? "text-green-500" : "text-red-500"}>
+                                {result.stockQuantity > 0 ? "In Stock" : "Out of Stock"}
+                              </span>
+                            </p>
+                            {locationStatus === "loading" && (
+                              <p className="text-sm text-gray-500 flex items-center">
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Getting your location to calculate distance...
+                              </p>
+                            )}
+                            {locationStatus === "success" && result.distance !== undefined && (
+                              <p className="text-sm text-gray-500">Distance: {result.distance} km</p>
+                            )}
+                            {locationStatus === "denied" && (
+                              <p className="text-sm text-red-500">Location access denied. Distances not shown.</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="pl-2">
+                          <Button variant="ghost" size="icon" onClick={(e) => handleMapIconClick(e, result)}>
+                            <MapPin className="h-6 w-6 text-blue-600" />
+                          </Button>
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon" onClick={(e) => handleMapIconClick(e, result)}><MapPin className="h-6 w-6 text-blue-600" /></Button>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <p className="text-center text-gray-500 mt-8">No matching products or stores found.</p>
+                  )}
                 </div>
               </ScrollArea>
             </CardContent>

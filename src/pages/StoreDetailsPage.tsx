@@ -4,11 +4,16 @@ import Map, { Marker, Source, Layer } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Footprints, AlertTriangle } from "lucide-react";
+import { Loader2, Footprints } from "lucide-react";
 import { MAPBOX_TOKEN } from "@/config";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import type { Feature, LineString } from 'geojson';
+import type { Feature, FeatureCollection, LineString } from "geojson";
+
+const containerStyle = {
+  width: "100%",
+  height: "300px",
+};
 
 interface Product {
   id: string;
@@ -41,15 +46,12 @@ const StoreDetailsPage = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [otherProducts, setOtherProducts] = useState<Product[]>([]);
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [showMoreButton, setShowMoreButton] = useState(true);
 
   useEffect(() => {
-    if (!MAPBOX_TOKEN) {
-      toast.error("Mapbox token is missing. Please add VITE_MAPBOX_TOKEN to your .env file.");
-    }
-
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition((position) => {
         setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
@@ -57,18 +59,29 @@ const StoreDetailsPage = () => {
     }
 
     const fetchInitialDetails = async () => {
-      if (!storeId || !productId) return;
+      if (!storeId || !productId) {
+        toast.error("Store or Product ID is missing.");
+        setLoading(false);
+        return;
+      }
       setLoading(true);
-      const { data: storeData, error: storeError } = await supabase.from("stores").select(`id, store_name, address, latitude, longitude`).eq("id", storeId).single();
-      const { data: productData, error: productError } = await supabase.from("products").select(`id, name, price, stock_quantity, image_url`).eq("id", productId).single();
-      
-      if (storeError || productError) {
-        toast.error("Failed to load store or product details.");
-      } else {
+      try {
+        const storePromise = supabase.from("stores").select(`id, store_name, address, latitude, longitude`).eq("id", storeId).single();
+        const productPromise = supabase.from("products").select(`id, name, price, stock_quantity, image_url`).eq("id", productId).single();
+        
+        const [{ data: storeData, error: storeError }, { data: productData, error: productError }] = await Promise.all([storePromise, productPromise]);
+
+        if (storeError) throw storeError;
+        if (productError) throw productError;
+
         setStore(storeData);
         setSelectedProduct(productData);
+      } catch (error) {
+        console.error("Error fetching initial details:", error);
+        toast.error("Failed to load store and product details.");
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchInitialDetails();
@@ -77,17 +90,31 @@ const StoreDetailsPage = () => {
   const handleFetchMoreProducts = async () => {
     if (!storeId || !productId) return;
     setLoadingMore(true);
-    const { data, error } = await supabase.from("products").select(`id, name, price, stock_quantity, image_url`).eq("store_id", storeId).eq("is_active", true).neq("id", productId);
-    if (error) toast.error("Failed to load more products.");
-    else {
+    try {
+      const { data, error } = await supabase
+        .from("products")
+        .select(`id, name, price, stock_quantity, image_url`)
+        .eq("store_id", storeId)
+        .eq("is_active", true)
+        .neq("id", productId);
+
+      if (error) throw error;
+      
       setOtherProducts(data || []);
       setShowMoreButton(false);
+    } catch (error) {
+      console.error("Error fetching more products:", error);
+      toast.error("Failed to load more products.");
+    } finally {
+      setLoadingMore(false);
     }
-    setLoadingMore(false);
   };
 
   const handleWalkToStore = () => {
-    if (!store) return;
+    if (!store) {
+      toast.error("Store location is not available.");
+      return;
+    }
     if (!userLocation) {
       toast.warning("Your location is not available to calculate a route.");
       return;
@@ -95,34 +122,28 @@ const StoreDetailsPage = () => {
     navigate(`/route?lat=${store.latitude}&lng=${store.longitude}`);
   };
 
-  const lineGeoJson: Feature<LineString> | null = userLocation && store ? {
-    type: 'Feature',
-    geometry: {
-      type: 'LineString',
-      coordinates: [[userLocation.lng, userLocation.lat], [store.longitude, store.latitude]]
-    },
-    properties: {}
-  } : null;
+  const lineGeoJson: FeatureCollection<LineString> = {
+    type: "FeatureCollection",
+    features: userLocation && store ? [
+      {
+        type: "Feature",
+        properties: {},
+        geometry: {
+          type: "LineString",
+          coordinates: [
+            [userLocation.lng, userLocation.lat],
+            [store.longitude, store.latitude],
+          ],
+        },
+      } as Feature<LineString>,
+    ] : [],
+  };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-12 w-12 animate-spin" /></div>;
-  if (!store || !selectedProduct) return <div className="text-center p-8">Could not load store or product details.</div>;
-
-  if (!MAPBOX_TOKEN) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center p-8 bg-yellow-50 rounded-lg max-w-md">
-          <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-yellow-800 mb-2">Mapbox Configuration Required</h2>
-          <p className="text-yellow-700 mb-4">
-            Mapbox token is missing. Please add your VITE_MAPBOX_TOKEN to the .env file.
-          </p>
-          <p className="text-sm text-yellow-600">
-            Using a default token for demonstration purposes.
-          </p>
-        </div>
-      </div>
-    );
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-12 w-12 animate-spin" /></div>;
   }
+
+  if (!store || !selectedProduct) return <div className="text-center p-8">Could not load store or product details.</div>;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -132,20 +153,30 @@ const StoreDetailsPage = () => {
           <p className="text-lg text-gray-600">{store.address}</p>
         </div>
 
-        <div className="h-[300px] w-full">
+        <div style={containerStyle}>
           <Map
-            initialViewState={{ latitude: store.latitude, longitude: store.longitude, zoom: 14 }}
+            initialViewState={{
+              longitude: store.longitude,
+              latitude: store.latitude,
+              zoom: 14
+            }}
             style={{ width: "100%", height: "100%" }}
             mapStyle="mapbox://styles/mapbox/streets-v11"
             mapboxAccessToken={MAPBOX_TOKEN}
           >
             {userLocation && <Marker longitude={userLocation.lng} latitude={userLocation.lat} color="#4285F4" />}
             <Marker longitude={store.longitude} latitude={store.latitude} />
-            {lineGeoJson && (
-              <Source id="route-line" type="geojson" data={lineGeoJson}>
-                <Layer id="line-layer" type="line" paint={{ 'line-color': '#4A90E2', 'line-width': 3 }} />
-              </Source>
-            )}
+            <Source id="route-line" type="geojson" data={lineGeoJson}>
+              <Layer
+                id="route-line-layer"
+                type="line"
+                paint={{
+                  "line-color": "#4A90E2",
+                  "line-width": 3,
+                  "line-dasharray": [2, 2],
+                }}
+              />
+            </Source>
           </Map>
         </div>
 
@@ -154,7 +185,7 @@ const StoreDetailsPage = () => {
           <CardContent>
             <div className="flex flex-col md:flex-row items-center gap-6">
               <img src={selectedProduct.image_url || "/placeholder.svg"} alt={selectedProduct.name} className="w-full md:w-1/3 h-64 object-cover rounded-lg" />
-              <div>
+              <div className="flex-grow">
                 <h2 className="text-3xl font-bold">{selectedProduct.name}</h2>
                 <p className="text-2xl font-bold text-green-600 my-2">${selectedProduct.price.toFixed(2)}</p>
                 <p className={`text-lg font-semibold ${selectedProduct.stock_quantity > 0 ? "text-green-500" : "text-red-500"}`}>
@@ -166,8 +197,16 @@ const StoreDetailsPage = () => {
         </Card>
 
         <div className="flex justify-center items-center gap-4">
-          {showMoreButton && <Button size="lg" onClick={handleFetchMoreProducts} disabled={loadingMore}>{loadingMore && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} More products</Button>}
-          <Button size="lg" variant="outline" onClick={handleWalkToStore} disabled={!userLocation}><Footprints className="mr-2 h-4 w-4" /> Walk to Store</Button>
+            {showMoreButton && (
+            <Button size="lg" onClick={handleFetchMoreProducts} disabled={loadingMore}>
+                {loadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                More products in this store
+            </Button>
+            )}
+            <Button size="lg" variant="outline" onClick={handleWalkToStore} disabled={!userLocation}>
+                <Footprints className="mr-2 h-4 w-4" />
+                Walk to Store
+            </Button>
         </div>
 
         {otherProducts.length > 0 && (
@@ -178,9 +217,11 @@ const StoreDetailsPage = () => {
                 {otherProducts.map((product) => (
                   <div key={product.id} className="border rounded-lg p-4 flex flex-col">
                     <img src={product.image_url || "/placeholder.svg"} alt={product.name} className="w-full h-40 object-cover rounded-md mb-4" />
-                    <h3 className="font-semibold flex-grow">{product.name}</h3>
+                    <h3 className="font-semibold text-lg flex-grow">{product.name}</h3>
                     <p className="text-md font-bold text-green-600">${product.price.toFixed(2)}</p>
-                    <p className={`text-sm ${product.stock_quantity > 0 ? "text-green-500" : "text-red-500"}`}>{product.stock_quantity > 0 ? "In Stock" : "Out of Stock"}</p>
+                    <p className={`text-sm ${product.stock_quantity > 0 ? "text-green-500" : "text-red-500"}`}>
+                      {product.stock_quantity > 0 ? "In Stock" : "Out of Stock"}
+                    </p>
                   </div>
                 ))}
               </div>
