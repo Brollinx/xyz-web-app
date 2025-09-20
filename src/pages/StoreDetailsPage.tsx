@@ -11,13 +11,15 @@ import { Loader2, Footprints } from "lucide-react";
 import { MAPBOX_TOKEN } from "@/config";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import DevDebugOverlay from "@/components/DevDebugOverlay"; // Import the new debug overlay
 
 // Set Mapbox access token globally for the Directions plugin
 mapboxgl.accessToken = MAPBOX_TOKEN;
 
 const containerStyle = {
   width: "100%",
-  height: "300px",
+  minHeight: "360px", // Ensure map is visible
+  height: "60vh", // Ensure map is visible
 };
 
 interface Product {
@@ -55,15 +57,20 @@ const StoreDetailsPage = () => {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [showMoreButton, setShowMoreButton] = useState(true);
+  const [directionsPluginActive, setDirectionsPluginActive] = useState(false);
 
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const directionsRef = useRef<MapboxDirections | null>(null);
 
   useEffect(() => {
     if (navigator.geolocation) {
+      console.log("Geolocation is available.");
       navigator.geolocation.getCurrentPosition((position) => {
         setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
+        console.log("User location obtained:", position.coords.latitude, position.coords.longitude);
       });
+    } else {
+      console.warn("Geolocation is not supported by your browser.");
     }
 
     const fetchInitialDetails = async () => {
@@ -99,10 +106,12 @@ const StoreDetailsPage = () => {
   useEffect(() => {
     if (mapRef.current && userLocation && store) {
       if (directionsRef.current) {
+        console.log("Mapbox Directions: Clearing existing routes and setting new origin/destination.");
         directionsRef.current.removeRoutes(); // Clear existing routes
         directionsRef.current.setOrigin([userLocation.lng, userLocation.lat]);
         directionsRef.current.setDestination([store.longitude, store.latitude]);
       } else {
+        console.log("Mapbox Directions: Initializing plugin.");
         const directions = new MapboxDirections({
           accessToken: MAPBOX_TOKEN,
           unit: "metric",
@@ -115,7 +124,9 @@ const StoreDetailsPage = () => {
 
         mapRef.current.addControl(directions, "top-left");
         directionsRef.current = directions;
+        setDirectionsPluginActive(true);
 
+        console.log("Mapbox Directions: Setting initial origin and destination.");
         directions.setOrigin([userLocation.lng, userLocation.lat]);
         directions.setDestination([store.longitude, store.latitude]);
       }
@@ -123,8 +134,10 @@ const StoreDetailsPage = () => {
 
     return () => {
       if (mapRef.current && directionsRef.current) {
+        console.log("Mapbox Directions: Removing plugin control.");
         mapRef.current.removeControl(directionsRef.current);
         directionsRef.current = null;
+        setDirectionsPluginActive(false);
       }
     };
   }, [mapRef.current, userLocation, store]);
@@ -166,7 +179,21 @@ const StoreDetailsPage = () => {
   };
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-12 w-12 animate-spin" /></div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin" />
+        <p className="ml-4">Loading store and product details...</p>
+        {import.meta.env.DEV && (
+          <DevDebugOverlay
+            mapboxTokenPresent={!!MAPBOX_TOKEN}
+            geolocationAvailable={!!navigator.geolocation}
+            mapInstanceExists={!!mapRef.current}
+            origin={userLocation}
+            destination={store ? { lat: store.latitude, lng: store.longitude } : null}
+          />
+        )}
+      </div>
+    );
   }
 
   if (!store || !selectedProduct) return <div className="text-center p-8">Could not load store or product details.</div>;
@@ -250,6 +277,16 @@ const StoreDetailsPage = () => {
           </Card>
         )}
       </div>
+      {import.meta.env.DEV && (
+        <DevDebugOverlay
+          mapboxTokenPresent={!!MAPBOX_TOKEN}
+          geolocationAvailable={!!navigator.geolocation}
+          mapInstanceExists={!!mapRef.current}
+          directionsPluginActive={directionsPluginActive}
+          origin={userLocation}
+          destination={store ? { lat: store.latitude, lng: store.longitude } : null}
+        />
+      )}
     </div>
   );
 };
