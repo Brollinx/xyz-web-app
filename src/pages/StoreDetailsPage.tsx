@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
-import { GoogleMap, useLoadScript, Marker } from "@react-google-maps/api";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
+import { GoogleMap, useLoadScript, Marker, Polyline } from "@react-google-maps/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, Footprints } from "lucide-react";
 import { GOOGLE_MAPS_API_KEY } from "@/config";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -37,6 +37,7 @@ interface UserLocation {
 const StoreDetailsPage = () => {
   const { storeId } = useParams<{ storeId: string }>();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const productId = searchParams.get("product");
 
   const [store, setStore] = useState<StoreInfo | null>(null);
@@ -114,6 +115,18 @@ const StoreDetailsPage = () => {
     }
   };
 
+  const handleWalkToStore = () => {
+    if (!store) {
+      toast.error("Store location is not available.");
+      return;
+    }
+    if (!userLocation) {
+      toast.warning("Your location is not available to calculate a route.");
+      return;
+    }
+    navigate(`/route?lat=${store.latitude}&lng=${store.longitude}`);
+  };
+
   const onLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
   }, []);
@@ -140,6 +153,19 @@ const StoreDetailsPage = () => {
         <GoogleMap mapContainerStyle={containerStyle} center={{ lat: store.latitude, lng: store.longitude }} zoom={14} onLoad={onLoad} onUnmount={onUnmount}>
           {userLocation && <Marker position={userLocation} icon={{ path: google.maps.SymbolPath.CIRCLE, fillColor: "#4285F4", fillOpacity: 1, strokeColor: "#FFFFFF", strokeWeight: 2, scale: 8 }} title="You are here" />}
           <Marker position={{ lat: store.latitude, lng: store.longitude }} title={store.store_name} />
+          {userLocation && store && (
+            <Polyline
+              path={[
+                userLocation,
+                { lat: store.latitude, lng: store.longitude },
+              ]}
+              options={{
+                strokeColor: "#4A90E2",
+                strokeOpacity: 0.8,
+                strokeWeight: 3,
+              }}
+            />
+          )}
         </GoogleMap>
 
         <Card>
@@ -158,14 +184,18 @@ const StoreDetailsPage = () => {
           </CardContent>
         </Card>
 
-        {showMoreButton && (
-          <div className="text-center">
+        <div className="flex justify-center items-center gap-4">
+            {showMoreButton && (
             <Button size="lg" onClick={handleFetchMoreProducts} disabled={loadingMore}>
-              {loadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              More products in this store
+                {loadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                More products in this store
             </Button>
-          </div>
-        )}
+            )}
+            <Button size="lg" variant="outline" onClick={handleWalkToStore} disabled={!userLocation}>
+                <Footprints className="mr-2 h-4 w-4" />
+                Walk to Store
+            </Button>
+        </div>
 
         {otherProducts.length > 0 && (
           <Card>
