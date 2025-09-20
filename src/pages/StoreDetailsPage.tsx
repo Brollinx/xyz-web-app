@@ -1,14 +1,19 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
-import Map, { Marker, Source, Layer } from "react-map-gl";
+import Map, { Marker } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import mapboxgl from "mapbox-gl"; // Import mapboxgl
+import MapboxDirections from "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions"; // Import MapboxDirections
+import "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions.css"; // Import directions CSS
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, Footprints } from "lucide-react";
 import { MAPBOX_TOKEN } from "@/config";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import type { Feature, FeatureCollection, LineString } from "geojson";
+
+// Set Mapbox access token globally for the Directions plugin
+mapboxgl.accessToken = MAPBOX_TOKEN;
 
 const containerStyle = {
   width: "100%",
@@ -51,6 +56,9 @@ const StoreDetailsPage = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [showMoreButton, setShowMoreButton] = useState(true);
 
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const directionsRef = useRef<MapboxDirections | null>(null);
+
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition((position) => {
@@ -87,6 +95,41 @@ const StoreDetailsPage = () => {
     fetchInitialDetails();
   }, [storeId, productId]);
 
+  // Effect for Mapbox Directions plugin
+  useEffect(() => {
+    if (mapRef.current && userLocation && store) {
+      if (directionsRef.current) {
+        directionsRef.current.removeRoutes(); // Clear existing routes
+        directionsRef.current.setOrigin([userLocation.lng, userLocation.lat]);
+        directionsRef.current.setDestination([store.longitude, store.latitude]);
+      } else {
+        const directions = new MapboxDirections({
+          accessToken: MAPBOX_TOKEN,
+          unit: "metric",
+          profile: "mapbox/walking",
+          alternatives: false,
+          geometries: "geojson",
+          controls: { instructions: false, profileSwitcher: false }, // Hide UI controls
+          flyTo: false, // Prevent map from flying to route
+        });
+
+        mapRef.current.addControl(directions, "top-left");
+        directionsRef.current = directions;
+
+        directions.setOrigin([userLocation.lng, userLocation.lat]);
+        directions.setDestination([store.longitude, store.latitude]);
+      }
+    }
+
+    return () => {
+      if (mapRef.current && directionsRef.current) {
+        mapRef.current.removeControl(directionsRef.current);
+        directionsRef.current = null;
+      }
+    };
+  }, [mapRef.current, userLocation, store]);
+
+
   const handleFetchMoreProducts = async () => {
     if (!storeId || !productId) return;
     setLoadingMore(true);
@@ -122,23 +165,6 @@ const StoreDetailsPage = () => {
     navigate(`/route?lat=${store.latitude}&lng=${store.longitude}`);
   };
 
-  const lineGeoJson: FeatureCollection<LineString> = {
-    type: "FeatureCollection",
-    features: userLocation && store ? [
-      {
-        type: "Feature",
-        properties: {},
-        geometry: {
-          type: "LineString",
-          coordinates: [
-            [userLocation.lng, userLocation.lat],
-            [store.longitude, store.latitude],
-          ],
-        },
-      } as Feature<LineString>,
-    ] : [],
-  };
-
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-12 w-12 animate-spin" /></div>;
   }
@@ -163,20 +189,15 @@ const StoreDetailsPage = () => {
             style={{ width: "100%", height: "100%" }}
             mapStyle="mapbox://styles/mapbox/streets-v11"
             mapboxAccessToken={MAPBOX_TOKEN}
+            ref={(instance) => {
+              if (instance) {
+                mapRef.current = instance.getMap();
+              }
+            }}
           >
             {userLocation && <Marker longitude={userLocation.lng} latitude={userLocation.lat} color="#4285F4" />}
             <Marker longitude={store.longitude} latitude={store.latitude} />
-            <Source id="route-line" type="geojson" data={lineGeoJson}>
-              <Layer
-                id="route-line-layer"
-                type="line"
-                paint={{
-                  "line-color": "#4A90E2",
-                  "line-width": 3,
-                  "line-dasharray": [2, 2],
-                }}
-              />
-            </Source>
+            {/* The MapboxDirections plugin will draw the route line, so we remove the custom Source/Layer */}
           </Map>
         </div>
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import Map, { Source, Layer } from "react-map-gl";
+import Map, { Source, Layer, Marker } from "react-map-gl"; // Added Marker import
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MAPBOX_TOKEN } from "@/config";
 import { Loader2, Clock, Milestone } from "lucide-react";
@@ -63,6 +63,7 @@ const RoutePage = () => {
     if (!userLocation || !destination) return;
 
     const fetchDirections = async () => {
+      // Ensure the profile is 'mapbox/walking' and steps are requested
       const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${userLocation.lng},${userLocation.lat};${destination.lng},${destination.lat}?steps=true&geometries=geojson&access_token=${MAPBOX_TOKEN}`;
       
       try {
@@ -79,7 +80,7 @@ const RoutePage = () => {
           const leg = route.legs[0];
           setDistance(`${(route.distance / 1000).toFixed(2)} km`);
           setDuration(`${Math.round(route.duration / 60)} min`);
-          setSteps(leg.steps);
+          setSteps(leg.steps); // Mapbox provides instructions in step.instructions
         } else {
           toast.error("Could not find a walking route.");
         }
@@ -115,6 +116,8 @@ const RoutePage = () => {
         mapStyle="mapbox://styles/mapbox/streets-v11"
         mapboxAccessToken={MAPBOX_TOKEN}
       >
+        {userLocation && <Marker longitude={userLocation.lng} latitude={userLocation.lat} color="#4285F4" />}
+        {destination && <Marker longitude={destination.lng} latitude={destination.lat} color="#FF0000" />}
         {routeGeoJson && (
           <Source id="route" type="geojson" data={routeGeoJson}>
             <Layer
