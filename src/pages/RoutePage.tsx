@@ -2,13 +2,14 @@ import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import Map, { Source, Layer, Marker } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import mapboxgl from "mapbox-gl"; // Import mapboxgl for LngLatBounds
 import { MAPBOX_TOKEN } from "@/config";
 import { Loader2, Clock, Milestone } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Feature, GeoJsonProperties, Geometry } from "geojson";
-import DevDebugOverlay from "@/components/DevDebugOverlay"; // Import the new debug overlay
+import DevDebugOverlay from "@/components/DevDebugOverlay";
 
 const containerStyle = {
   width: "100%",
@@ -20,6 +21,8 @@ interface MapboxStep {
   maneuver: {
     instruction: string;
   };
+  distance: number; // Distance in meters for this step
+  duration: number; // Duration in seconds for this step
 }
 
 const RoutePage = () => {
@@ -29,8 +32,8 @@ const RoutePage = () => {
   const [routeGeoJson, setRouteGeoJson] = useState<Feature<Geometry, GeoJsonProperties> | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const [distance, setDistance] = useState<string | null>(null);
-  const [duration, setDuration] = useState<string | null>(null);
+  const [totalDistance, setTotalDistance] = useState<string | null>(null);
+  const [totalDuration, setTotalDuration] = useState<string | null>(null);
   const [steps, setSteps] = useState<MapboxStep[]>([]);
   const [lastDirectionsResponseSummary, setLastDirectionsResponseSummary] = useState<any>(null);
   const [routeError, setRouteError] = useState(false);
@@ -75,11 +78,12 @@ const RoutePage = () => {
   }, [searchParams]);
 
   useEffect(() => {
-    if (!userLocation || !destination) return;
+    if (!userLocation || !destination || !mapRef.current) return; // Ensure map is loaded
 
     const fetchDirections = async () => {
       setRouteError(false); // Reset error
-      const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${userLocation.lng},${userLocation.lat};${destination.lng},${destination.lat}?steps=true&geometries=geojson&access_token=${MAPBOX_TOKEN}`;
+      // Build the Mapbox Directions request URL exactly: lon,lat order
+      const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${userLocation.lng},${userLocation.lat};${destination.lng},${destination.lat}?alternatives=false&geometries=geojson&overview=full&steps=true&access_token=${MAPBOX_TOKEN}`;
       
       // Log the request URL (redacting token for safety in logs)
       console.log("Directions API Request URL (token redacted):", url.replace(`access_token=${MAPBOX_TOKEN}`, "access_token=REDACTED"));
@@ -100,14 +104,45 @@ const RoutePage = () => {
 
         if (data.routes && data.routes.length > 0) {
           const route = data.routes[0];
-          setRouteGeoJson({
+          console.debug('Mapbox directions response', route); // Debug log for troubleshooting
+
+          const newRouteGeoJson: Feature<Geometry, GeoJsonProperties> = {
             type: "Feature",
             properties: {},
             geometry: route.geometry,
-          });
+          };
+          setRouteGeoJson(newRouteGeoJson);
+
+          const map = mapRef.current;
+          if (map) {
+            // Update or add source and layer
+            if (map.getSource('route')) {
+              (map.getSource('route') as mapboxgl.GeoJSONSource).setData(newRouteGeoJson);
+            } else {
+              map.addSource('route', { type: 'geojson', data: newRouteGeoJson });
+              map.addLayer({
+                id: 'route-line',
+                type: 'line',
+                source: 'route',
+                paint: {
+                  'line-color': '#3b82f6', // Tailwind blue-500
+                  'line-width': 6,
+                },
+              });
+            }
+
+            // Fit map to route bounds
+            const coordinates = route.geometry.coordinates;
+            const bounds = new mapboxgl.LngLatBounds();
+            for (const coord of coordinates) {
+              bounds.extend(coord as [number, number]);
+            }
+            map.fitBounds(bounds, { padding: 60, duration: 1000 });
+          }
+
           const leg = route.legs[0];
-          setDistance(`${(route.distance / 1000).toFixed(2)} km`);
-          setDuration(`${Math.round(route.duration / 60)} min`);
+          setTotalDistance(`${(route.distance / 1000).toFixed(1)} km`); // Total distance in km, 1 decimal
+          setTotalDuration(`${Math.round(route.duration / 60)} min`); // Total duration in minutes, rounded
           setSteps(leg.steps.filter((step: any) => step.maneuver && step.maneuver.instruction));
         } else {
           toast.error("Could not find a walking route.");
@@ -123,7 +158,7 @@ const RoutePage = () => {
     };
 
     fetchDirections();
-  }, [userLocation, destination]);
+  }, [userLocation, destination, mapRef.current]); // Depend on mapRef.current to ensure map is loaded
 
   const handleOpenGoogleMaps = () => {
     if (userLocation && destination) {
@@ -171,35 +206,24 @@ const RoutePage = () => {
       >
         {userLocation && <Marker longitude={userLocation.lng} latitude={userLocation.lat} color="#4285F4" />}
         {destination && <Marker longitude={destination.lng} latitude={destination.lat} color="#FF0000" />}
-        {routeGeoJson && (
-          <Source id="route" type="geojson" data={routeGeoJson}>
-            <Layer
-              id="route-layer"
-              type="line"
-              paint={{
-                "line-color": "#007cbf",
-                "line-width": 5,
-              }}
-            />
-          </Source>
-        )}
+        {/* Route layer is added/updated dynamically via mapRef.current */}
       </Map>
 
-      {steps.length > 0 && (
+      {(steps.length > 0 || routeGeoJson) && ( // Show card if route line exists or steps are available
         <Card className="absolute top-4 left-4 right-4 w-auto max-w-md m-auto bg-white/90 backdrop-blur-sm shadow-lg">
           <CardHeader>
             <CardTitle>Walking Directions</CardTitle>
             <div className="flex items-center justify-around text-sm text-gray-700 pt-2">
-              {duration && (
+              {totalDuration && (
                 <div className="flex items-center gap-2">
                   <Clock className="h-5 w-5 text-blue-600" />
-                  <span className="font-bold">{duration}</span>
+                  <span className="font-bold">{totalDuration}</span>
                 </div>
               )}
-              {distance && (
+              {totalDistance && (
                 <div className="flex items-center gap-2">
                   <Milestone className="h-5 w-5 text-green-600" />
-                  <span className="font-bold">{distance}</span>
+                  <span className="font-bold">{totalDistance}</span>
                 </div>
               )}
             </div>
@@ -207,9 +231,16 @@ const RoutePage = () => {
           <CardContent>
             <ScrollArea className="h-48">
               <ol className="space-y-3 list-decimal list-inside">
-                {steps.map((step, index) => (
-                  <li key={index} className="text-sm" dangerouslySetInnerHTML={{ __html: step.maneuver.instruction }} />
-                ))}
+                {steps.length > 0 ? (
+                  steps.map((step, index) => (
+                    <li key={index} className="text-sm">
+                      <span dangerouslySetInnerHTML={{ __html: step.maneuver.instruction }} />
+                      {step.distance > 0 && <span className="text-gray-500 ml-2">({step.distance.toFixed(0)} m)</span>}
+                    </li>
+                  ))
+                ) : (
+                  routeGeoJson && <p className="text-center text-gray-500">Route found but no step-by-step details available.</p>
+                )}
               </ol>
             </ScrollArea>
           </CardContent>
