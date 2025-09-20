@@ -25,6 +25,13 @@ const RoutePage = () => {
   const [steps, setSteps] = useState<any[]>([]);
 
   useEffect(() => {
+    // Check if Mapbox token is available
+    if (!MAPBOX_TOKEN) {
+      toast.error("Mapbox token is missing. Please add VITE_MAPBOX_TOKEN to your .env file.");
+      setLoading(false);
+      return;
+    }
+
     const destLat = searchParams.get("lat");
     const destLng = searchParams.get("lng");
 
@@ -33,6 +40,7 @@ const RoutePage = () => {
     } else {
       toast.error("Destination coordinates are missing.");
       setLoading(false);
+      return;
     }
 
     navigator.geolocation.getCurrentPosition(
@@ -47,7 +55,7 @@ const RoutePage = () => {
   }, [searchParams]);
 
   useEffect(() => {
-    if (!userLocation || !destination) return;
+    if (!userLocation || !destination || !MAPBOX_TOKEN) return;
 
     const fetchRoute = async () => {
       const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${userLocation.lng},${userLocation.lat};${destination.lng},${destination.lat}?steps=true&geometries=geojson&access_token=${MAPBOX_TOKEN}`;
@@ -70,13 +78,14 @@ const RoutePage = () => {
         }
       } catch (error) {
         toast.error("Failed to fetch route from Mapbox.");
+        console.error("Mapbox API error:", error);
       } finally {
         setLoading(false);
       }
     };
 
     fetchRoute();
-  }, [userLocation, destination]);
+  }, [userLocation, destination, MAPBOX_TOKEN]);
 
   if (loading) {
     return (
@@ -89,22 +98,28 @@ const RoutePage = () => {
 
   return (
     <div className="w-full flex-grow relative">
-      <Map
-        initialViewState={{
-          latitude: userLocation?.lat || destination?.lat || 0,
-          longitude: userLocation?.lng || destination?.lng || 0,
-          zoom: 15,
-        }}
-        style={{ width: "100%", height: "100%" }}
-        mapStyle="mapbox://styles/mapbox/streets-v11"
-        mapboxAccessToken={MAPBOX_TOKEN}
-      >
-        {routeGeoJson && (
-          <Source id="route" type="geojson" data={routeGeoJson}>
-            <Layer id="route-layer" type="line" paint={{ 'line-color': '#007cbf', 'line-width': 5 }} />
-          </Source>
-        )}
-      </Map>
+      {MAPBOX_TOKEN ? (
+        <Map
+          initialViewState={{
+            latitude: userLocation?.lat || destination?.lat || 0,
+            longitude: userLocation?.lng || destination?.lng || 0,
+            zoom: 15,
+          }}
+          style={{ width: "100%", height: "100%" }}
+          mapStyle="mapbox://styles/mapbox/streets-v11"
+          mapboxAccessToken={MAPBOX_TOKEN}
+        >
+          {routeGeoJson && (
+            <Source id="route" type="geojson" data={routeGeoJson}>
+              <Layer id="route-layer" type="line" paint={{ 'line-color': '#007cbf', 'line-width': 5 }} />
+            </Source>
+          )}
+        </Map>
+      ) : (
+        <div className="min-h-screen flex items-center justify-center">
+          <p className="text-red-500">Mapbox token is missing. Please check your configuration.</p>
+        </div>
+      )}
 
       {steps.length > 0 && (
         <Card className="absolute top-4 left-4 right-4 w-auto max-w-md m-auto bg-white/90 backdrop-blur-sm shadow-lg">

@@ -4,7 +4,7 @@ import Map, { Marker, Source, Layer } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Footprints } from "lucide-react";
+import { Loader2, Footprints, AlertTriangle } from "lucide-react";
 import { MAPBOX_TOKEN } from "@/config";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -46,6 +46,10 @@ const StoreDetailsPage = () => {
   const [showMoreButton, setShowMoreButton] = useState(true);
 
   useEffect(() => {
+    if (!MAPBOX_TOKEN) {
+      toast.error("Mapbox token is missing. Please add VITE_MAPBOX_TOKEN to your .env file.");
+    }
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition((position) => {
         setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
@@ -102,6 +106,23 @@ const StoreDetailsPage = () => {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-12 w-12 animate-spin" /></div>;
   if (!store || !selectedProduct) return <div className="text-center p-8">Could not load store or product details.</div>;
+
+  if (!MAPBOX_TOKEN) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center p-8 bg-yellow-50 rounded-lg max-w-md">
+          <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-yellow-800 mb-2">Mapbox Configuration Required</h2>
+          <p className="text-yellow-700 mb-4">
+            Mapbox token is missing. Please add your VITE_MAPBOX_TOKEN to the .env file.
+          </p>
+          <p className="text-sm text-yellow-600">
+            Using a default token for demonstration purposes.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, Loader2 } from "lucide-react";
+import { Search, MapPin, Loader2, AlertTriangle } from "lucide-react";
 import { MAPBOX_TOKEN } from "@/config";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -51,6 +51,10 @@ const SearchResultsPage = () => {
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("loading");
 
   useEffect(() => {
+    if (!MAPBOX_TOKEN) {
+      toast.error("Mapbox token is missing. Please add VITE_MAPBOX_TOKEN to your .env file.");
+    }
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -147,6 +151,23 @@ const SearchResultsPage = () => {
       return false;
     });
   }, [processedProductResults]);
+
+  if (!MAPBOX_TOKEN) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center p-8 bg-yellow-50 rounded-lg max-w-md">
+          <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-yellow-800 mb-2">Mapbox Configuration Required</h2>
+          <p className="text-yellow-700 mb-4">
+            Mapbox token is missing. Please add your VITE_MAPBOX_TOKEN to the .env file.
+          </p>
+          <p className="text-sm text-yellow-600">
+            Using a default token for demonstration purposes.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center bg-gray-50 p-4">
