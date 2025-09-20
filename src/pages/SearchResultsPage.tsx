@@ -293,7 +293,7 @@ const SearchResultsPage = () => {
                           "p-3 border rounded-md hover:bg-gray-100 cursor-pointer transition-colors flex items-center justify-between",
                           selectedProductResult?.productId === result.productId && "bg-blue-50 border-blue-500 ring-2 ring-blue-200"
                         )}
-                        onClick={() => navigate(`/store/${result.storeId}/product/${result.productId}`)}
+                        onClick={() => navigate(`/store/${result.storeId}?product=${result.productId}`)}
                       >
                         <div className="flex items-center flex-grow">
                           {result.productImageUrl && (

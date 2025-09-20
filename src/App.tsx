@@ -6,8 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LandingPage from "./pages/LandingPage";
 import SearchResultsPage from "./pages/SearchResultsPage";
 import StoreDetailsPage from "./pages/StoreDetailsPage";
-import RoutePage from "./pages/RoutePage";
-import ProductPage from "./pages/ProductPage"; // Import the new page
+import RoutePage from "./pages/RoutePage"; // Import the new page
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 
@@ -24,8 +23,7 @@ const App = () => (
             <Route path="/" element={<LandingPage />} />
             <Route path="/search-results" element={<SearchResultsPage />} />
             <Route path="/store/:storeId" element={<StoreDetailsPage />} />
-            <Route path="/store/:storeId/product/:productId" element={<ProductPage />} /> {/* Add the new route */}
-            <Route path="/route" element={<RoutePage />} />
+            <Route path="/route" element={<RoutePage />} /> {/* Add the new route */}
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
