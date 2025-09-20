@@ -18,7 +18,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </Link>
         {/* You can add more navigation items or a logo here if needed */}
       </header>
-      <main className="flex-grow">
+      <main className="flex-grow flex flex-col">
         {children}
       </main>
     </div>
