@@ -1,20 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
-import Map, { Marker } from "react-map-gl";
+import Map, { Marker, Source, Layer } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import mapboxgl from "mapbox-gl"; // Import mapboxgl
-import MapboxDirections from "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions"; // Import MapboxDirections
-import "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions.css"; // Import directions CSS
+import mapboxgl from "mapbox-gl"; // Import mapboxgl for fitBounds
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, Footprints } from "lucide-react";
 import { MAPBOX_TOKEN } from "@/config";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import DevDebugOverlay from "@/components/DevDebugOverlay"; // Import the new debug overlay
-
-// Set Mapbox access token globally for the Directions plugin
-mapboxgl.accessToken = MAPBOX_TOKEN;
+import type { Feature, GeoJsonProperties, Geometry } from "geojson";
 
 const containerStyle = {
   width: "100%",
@@ -43,6 +38,31 @@ interface UserLocation {
   lng: number;
 }
 
+// Helper function to calculate bounding box from GeoJSON LineString
+const getBounds = (geometry: Geometry) => {
+  if (geometry.type !== 'LineString') {
+    return null;
+  }
+  const coordinates = geometry.coordinates as [number, number][];
+  if (coordinates.length === 0) {
+    return null;
+  }
+
+  let minLng = Infinity;
+  let minLat = Infinity;
+  let maxLng = -Infinity;
+  let maxLat = -Infinity;
+
+  for (const coord of coordinates) {
+    minLng = Math.min(minLng, coord[0]);
+    minLat = Math.min(minLat, coord[1]);
+    maxLng = Math.max(maxLng, coord[0]);
+    maxLat = Math.max(maxLat, coord[1]);
+  }
+
+  return [[minLng, minLat], [maxLng, maxLat]] as [[number, number], [number, number]];
+};
+
 const StoreDetailsPage = () => {
   const { storeId } = useParams<{ storeId: string }>();
   const [searchParams] = useSearchParams();
@@ -53,14 +73,13 @@ const StoreDetailsPage = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [otherProducts, setOtherProducts] = useState<Product[]>([]);
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  const [routeGeoJson, setRouteGeoJson] = useState<Feature<Geometry, GeoJsonProperties> | null>(null);
   
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [showMoreButton, setShowMoreButton] = useState(true);
-  const [directionsPluginActive, setDirectionsPluginActive] = useState(false);
 
   const mapRef = useRef<mapboxgl.Map | null>(null);
-  const directionsRef = useRef<MapboxDirections | null>(null);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -68,9 +87,13 @@ const StoreDetailsPage = () => {
       navigator.geolocation.getCurrentPosition((position) => {
         setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
         console.log("User location obtained:", position.coords.latitude, position.coords.longitude);
+      }, (error) => {
+        console.error("Error getting user location:", error);
+        toast.warning("Could not get your location. Route will not be shown.");
       });
     } else {
       console.warn("Geolocation is not supported by your browser.");
+      toast.warning("Geolocation is not supported by your browser. Route will not be shown.");
     }
 
     const fetchInitialDetails = async () => {
@@ -102,56 +125,50 @@ const StoreDetailsPage = () => {
     fetchInitialDetails();
   }, [storeId, productId]);
 
-  // Effect for Mapbox Directions plugin
+  // Effect to fetch and render directions
   useEffect(() => {
-    if (mapRef.current && userLocation && store) {
-      let directionsInstance = directionsRef.current;
+    if (!userLocation || !store) return;
 
-      if (!directionsInstance) {
-        console.log("Mapbox Directions: Initializing plugin.");
-        directionsInstance = new MapboxDirections({
-          accessToken: MAPBOX_TOKEN,
-          unit: "metric",
-          profile: "mapbox/walking",
-          alternatives: false,
-          geometries: "geojson",
-          controls: { inputs: false, instructions: false }, // Hide input fields and instruction panel
-          flyTo: false, // Prevent map from flying to route
-        });
+    const fetchDirections = async () => {
+      const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${userLocation.lng},${userLocation.lat};${store.longitude},${store.latitude}?geometries=geojson&access_token=${MAPBOX_TOKEN}`;
+      
+      console.log("Directions API Request URL (token redacted):", url.replace(`access_token=${MAPBOX_TOKEN}`, "access_token=REDACTED"));
 
-        mapRef.current.addControl(directionsInstance, "top-left");
-        directionsRef.current = directionsInstance;
-        setDirectionsPluginActive(true);
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
 
-        // Add the route event listener only once when the plugin is initialized
-        directionsInstance.on('route', (event) => {
-          if (event.route && event.route[0] && mapRef.current) {
-            const bounds = directionsInstance?.getBounds();
+        console.log("Directions API Response:", data);
+
+        if (data.routes && data.routes.length > 0) {
+          const route = data.routes[0];
+          const newRouteGeoJson: Feature<Geometry, GeoJsonProperties> = {
+            type: "Feature",
+            properties: {},
+            geometry: route.geometry,
+          };
+          setRouteGeoJson(newRouteGeoJson);
+
+          // Fit map to route bounds
+          if (mapRef.current && newRouteGeoJson.geometry) {
+            const bounds = getBounds(newRouteGeoJson.geometry);
             if (bounds) {
-              mapRef.current.fitBounds(bounds, { padding: 50 });
+              mapRef.current.fitBounds(bounds, { padding: 50, duration: 1000 });
             }
           }
-        });
-      } else {
-        console.log("Mapbox Directions: Clearing existing routes and setting new origin/destination.");
-        directionsInstance.removeRoutes(); // Clear existing routes
-      }
-
-      console.log("Mapbox Directions: Setting origin and destination.");
-      directionsInstance.setOrigin([userLocation.lng, userLocation.lat]);
-      directionsInstance.setDestination([store.longitude, store.latitude]);
-    }
-
-    return () => {
-      if (mapRef.current && directionsRef.current) {
-        console.log("Mapbox Directions: Removing plugin control.");
-        // The 'route' event listener is implicitly cleaned up when the directions instance is removed.
-        mapRef.current.removeControl(directionsRef.current);
-        directionsRef.current = null;
-        setDirectionsPluginActive(false);
+        } else {
+          toast.error("Could not find a walking route to the store.");
+          setRouteGeoJson(null); // Clear any previous route
+        }
+      } catch (error) {
+        console.error("Error fetching directions:", error);
+        toast.error("Failed to fetch walking directions to the store.");
+        setRouteGeoJson(null); // Clear any previous route
       }
     };
-  }, [mapRef.current, userLocation, store]);
+
+    fetchDirections();
+  }, [userLocation, store]);
 
 
   const handleFetchMoreProducts = async () => {
@@ -194,15 +211,6 @@ const StoreDetailsPage = () => {
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin" />
         <p className="ml-4">Loading store and product details...</p>
-        {import.meta.env.DEV && (
-          <DevDebugOverlay
-            mapboxTokenPresent={!!MAPBOX_TOKEN}
-            geolocationAvailable={!!navigator.geolocation}
-            mapInstanceExists={!!mapRef.current}
-            origin={userLocation}
-            destination={store ? { lat: store.latitude, lng: store.longitude } : null}
-          />
-        )}
       </div>
     );
   }
@@ -234,8 +242,21 @@ const StoreDetailsPage = () => {
             }}
           >
             {userLocation && <Marker longitude={userLocation.lng} latitude={userLocation.lat} color="#4285F4" />}
-            <Marker longitude={store.longitude} latitude={store.latitude} />
-            {/* The MapboxDirections plugin will draw the route line, so we remove the custom Source/Layer */}
+            <Marker longitude={store.longitude} latitude={store.latitude} color="#FF0000" />
+            {routeGeoJson && (
+              <Source id="route" type="geojson" data={routeGeoJson}>
+                <Layer
+                  id="route-layer"
+                  type="line"
+                  paint={{
+                    "line-color": "#007cbf",
+                    "line-width": 4,
+                    "line-join": "round",
+                    "line-cap": "round",
+                  }}
+                />
+              </Source>
+            )}
           </Map>
         </div>
 
@@ -288,16 +309,6 @@ const StoreDetailsPage = () => {
           </Card>
         )}
       </div>
-      {import.meta.env.DEV && (
-        <DevDebugOverlay
-          mapboxTokenPresent={!!MAPBOX_TOKEN}
-          geolocationAvailable={!!navigator.geolocation}
-          mapInstanceExists={!!mapRef.current}
-          directionsPluginActive={directionsPluginActive}
-          origin={userLocation}
-          destination={store ? { lat: store.latitude, lng: store.longitude } : null}
-        />
-      )}
     </div>
   );
 };
