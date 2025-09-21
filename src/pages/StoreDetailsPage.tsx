@@ -105,15 +105,12 @@ const StoreDetailsPage = () => {
   // Effect for Mapbox Directions plugin
   useEffect(() => {
     if (mapRef.current && userLocation && store) {
-      if (directionsRef.current) {
-        console.log("Mapbox Directions: Clearing existing routes and setting new origin/destination.");
-        directionsRef.current.removeRoutes(); // Clear existing routes
-        directionsRef.current.setOrigin([userLocation.lng, userLocation.lat]);
-        directionsRef.current.setDestination([store.longitude, store.latitude]);
-      } else {
+      let directionsInstance = directionsRef.current;
+
+      if (!directionsInstance) {
         console.log("Mapbox Directions: Initializing plugin.");
-        const directions = new MapboxDirections({
-          accessToken: mapboxgl.accessToken, // Using global access token
+        directionsInstance = new MapboxDirections({
+          accessToken: MAPBOX_TOKEN,
           unit: "metric",
           profile: "mapbox/walking",
           alternatives: false,
@@ -122,19 +119,33 @@ const StoreDetailsPage = () => {
           flyTo: false, // Prevent map from flying to route
         });
 
-        mapRef.current.addControl(directions, "top-left");
-        directionsRef.current = directions;
+        mapRef.current.addControl(directionsInstance, "top-left");
+        directionsRef.current = directionsInstance;
         setDirectionsPluginActive(true);
 
-        console.log("Mapbox Directions: Setting initial origin and destination.");
-        directions.setOrigin([userLocation.lng, userLocation.lat]);
-        directions.setDestination([store.longitude, store.latitude]);
+        // Add the route event listener only once when the plugin is initialized
+        directionsInstance.on('route', (event) => {
+          if (event.route && event.route[0] && mapRef.current) {
+            const bounds = directionsInstance?.getBounds();
+            if (bounds) {
+              mapRef.current.fitBounds(bounds, { padding: 50 });
+            }
+          }
+        });
+      } else {
+        console.log("Mapbox Directions: Clearing existing routes and setting new origin/destination.");
+        directionsInstance.removeRoutes(); // Clear existing routes
       }
+
+      console.log("Mapbox Directions: Setting origin and destination.");
+      directionsInstance.setOrigin([userLocation.lng, userLocation.lat]);
+      directionsInstance.setDestination([store.longitude, store.latitude]);
     }
 
     return () => {
       if (mapRef.current && directionsRef.current) {
         console.log("Mapbox Directions: Removing plugin control.");
+        // The 'route' event listener is implicitly cleaned up when the directions instance is removed.
         mapRef.current.removeControl(directionsRef.current);
         directionsRef.current = null;
         setDirectionsPluginActive(false);
