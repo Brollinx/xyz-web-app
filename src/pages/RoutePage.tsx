@@ -5,22 +5,14 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { MAPBOX_TOKEN } from "@/config";
 import { Loader2, Clock, Milestone } from "lucide-react";
 import { toast } from "sonner";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card, CardContent } from "@/components/ui/card";
 import type { Feature, GeoJsonProperties, Geometry } from "geojson";
-import DevDebugOverlay from "@/components/DevDebugOverlay"; // Import the new debug overlay
 
 const containerStyle = {
   width: "100%",
   minHeight: "360px", // Ensure map is visible
-  height: "60vh", // Ensure map is visible
+  height: "100vh", // Make map fill the entire viewport height
 };
-
-interface MapboxStep {
-  maneuver: {
-    instruction: string;
-  };
-}
 
 // Helper function to calculate bounding box from GeoJSON LineString
 const getBounds = (geometry: Geometry) => {
@@ -56,10 +48,6 @@ const RoutePage = () => {
 
   const [distance, setDistance] = useState<string | null>(null);
   const [duration, setDuration] = useState<string | null>(null);
-  const [steps, setSteps] = useState<MapboxStep[]>([]);
-  const [lastDirectionsResponseSummary, setLastDirectionsResponseSummary] = useState<any>(null);
-  const [routeError, setRouteError] = useState(false);
-
   const mapRef = useRef<mapboxgl.Map | null>(null); // Ref to get map instance
 
   useEffect(() => {
@@ -71,7 +59,7 @@ const RoutePage = () => {
     } else {
       toast.error("Destination coordinates are missing.");
       setLoading(false);
-      setRouteError(true);
+      return;
     }
 
     if (navigator.geolocation) {
@@ -88,14 +76,12 @@ const RoutePage = () => {
           console.error("Error getting user location:", error);
           toast.error("Could not get your location. Cannot calculate route.");
           setLoading(false);
-          setRouteError(true);
         }
       );
     } else {
       console.warn("Geolocation is not supported by your browser.");
       toast.error("Geolocation is not supported by your browser.");
       setLoading(false);
-      setRouteError(true);
     }
   }, [searchParams]);
 
@@ -103,25 +89,15 @@ const RoutePage = () => {
     if (!userLocation || !destination) return;
 
     const fetchDirections = async () => {
-      setRouteError(false); // Reset error
-      const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${userLocation.lng},${userLocation.lat};${destination.lng},${destination.lat}?steps=true&geometries=geojson&access_token=${MAPBOX_TOKEN}`;
+      const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${userLocation.lng},${userLocation.lat};${destination.lng},${destination.lat}?geometries=geojson&access_token=${MAPBOX_TOKEN}`;
       
-      // Log the request URL (redacting token for safety in logs)
       console.log("Directions API Request URL (token redacted):", url.replace(`access_token=${MAPBOX_TOKEN}`, "access_token=REDACTED"));
 
       try {
         const response = await fetch(url);
         const data = await response.json();
 
-        // Log the full JSON response
         console.log("Directions API Response:", data);
-        setLastDirectionsResponseSummary({
-          code: data.code,
-          uuid: data.uuid,
-          waypoints: data.waypoints?.length,
-          routes: data.routes?.length,
-          message: data.message, // Include error message if present
-        });
 
         if (data.routes && data.routes.length > 0) {
           const route = data.routes[0];
@@ -140,18 +116,14 @@ const RoutePage = () => {
             }
           }
 
-          const leg = route.legs[0];
           setDistance(`${(route.distance / 1000).toFixed(2)} km`);
           setDuration(`${Math.round(route.duration / 60)} min`);
-          setSteps(leg.steps.filter((step: any) => step.maneuver && step.maneuver.instruction));
         } else {
           toast.error("Could not find a walking route.");
-          setRouteError(true);
         }
       } catch (error) {
         console.error("Error fetching directions:", error);
         toast.error("Failed to fetch walking directions.");
-        setRouteError(true);
       } finally {
         setLoading(false);
       }
@@ -160,29 +132,11 @@ const RoutePage = () => {
     fetchDirections();
   }, [userLocation, destination]);
 
-  const handleOpenGoogleMaps = () => {
-    if (userLocation && destination) {
-      const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${userLocation.lat},${userLocation.lng}&destination=${destination.lat},${destination.lng}&travelmode=walking`;
-      window.open(googleMapsUrl, "_blank");
-    } else {
-      toast.error("Cannot open Google Maps: origin or destination is missing.");
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin" />
         <p className="ml-4">Loading map and calculating route...</p>
-        {import.meta.env.DEV && (
-          <DevDebugOverlay
-            mapboxTokenPresent={!!MAPBOX_TOKEN}
-            geolocationAvailable={!!navigator.geolocation}
-            mapInstanceExists={!!mapRef.current}
-            origin={userLocation}
-            destination={destination}
-          />
-        )}
       </div>
     );
   }
@@ -213,55 +167,32 @@ const RoutePage = () => {
               type="line"
               paint={{
                 "line-color": "#007cbf",
-                "line-width": 5,
+                "line-width": 4,
+                "line-join": "round",
+                "line-cap": "round",
               }}
             />
           </Source>
         )}
       </Map>
 
-      {steps.length > 0 && (
-        <Card className="absolute top-4 left-4 right-4 w-auto max-w-md m-auto bg-white/90 backdrop-blur-sm shadow-lg">
-          <CardHeader>
-            <CardTitle>Walking Directions</CardTitle>
-            <div className="flex items-center justify-around text-sm text-gray-700 pt-2">
-              {duration && (
-                <div className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-blue-600" />
-                  <span className="font-bold">{duration}</span>
-                </div>
-              )}
-              {distance && (
-                <div className="flex items-center gap-2">
-                  <Milestone className="h-5 w-5 text-green-600" />
-                  <span className="font-bold">{distance}</span>
-                </div>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-48">
-              <ol className="space-y-3 list-decimal list-inside">
-                {steps.map((step, index) => (
-                  <li key={index} className="text-sm" dangerouslySetInnerHTML={{ __html: step.maneuver.instruction }} />
-                ))}
-              </ol>
-            </ScrollArea>
+      {(distance || duration) && (
+        <Card className="absolute bottom-4 left-1/2 -translate-x-1/2 w-auto max-w-xs bg-white/90 backdrop-blur-sm shadow-lg rounded-lg p-4">
+          <CardContent className="flex items-center justify-around p-0">
+            {duration && (
+              <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+                <Clock className="h-5 w-5 text-blue-600" />
+                <span>{duration}</span>
+              </div>
+            )}
+            {distance && (
+              <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+                <Milestone className="h-5 w-5 text-green-600" />
+                <span>{distance}</span>
+              </div>
+            )}
           </CardContent>
         </Card>
-      )}
-
-      {import.meta.env.DEV && (
-        <DevDebugOverlay
-          mapboxTokenPresent={!!MAPBOX_TOKEN}
-          geolocationAvailable={!!navigator.geolocation}
-          mapInstanceExists={!!mapRef.current}
-          lastDirectionsResponseSummary={lastDirectionsResponseSummary}
-          routeError={routeError}
-          origin={userLocation}
-          destination={destination}
-          onOpenGoogleMaps={handleOpenGoogleMaps}
-        />
       )}
     </div>
   );
