@@ -113,12 +113,12 @@ const StoreDetailsPage = () => {
       } else {
         console.log("Mapbox Directions: Initializing plugin.");
         const directions = new MapboxDirections({
-          accessToken: MAPBOX_TOKEN,
+          accessToken: mapboxgl.accessToken, // Using global access token
           unit: "metric",
           profile: "mapbox/walking",
           alternatives: false,
           geometries: "geojson",
-          controls: { instructions: false, profileSwitcher: false }, // Hide UI controls
+          controls: { inputs: false, instructions: false }, // Hide input fields and instruction panel
           flyTo: false, // Prevent map from flying to route
         });
 
