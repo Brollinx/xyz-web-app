@@ -22,6 +22,31 @@ interface MapboxStep {
   };
 }
 
+// Helper function to calculate bounding box from GeoJSON LineString
+const getBounds = (geometry: Geometry) => {
+  if (geometry.type !== 'LineString') {
+    return null;
+  }
+  const coordinates = geometry.coordinates as [number, number][];
+  if (coordinates.length === 0) {
+    return null;
+  }
+
+  let minLng = Infinity;
+  let minLat = Infinity;
+  let maxLng = -Infinity;
+  let maxLat = -Infinity;
+
+  for (const coord of coordinates) {
+    minLng = Math.min(minLng, coord[0]);
+    minLat = Math.min(minLat, coord[1]);
+    maxLng = Math.max(maxLng, coord[0]);
+    maxLat = Math.max(maxLat, coord[1]);
+  }
+
+  return [[minLng, minLat], [maxLng, maxLat]] as [[number, number], [number, number]];
+};
+
 const RoutePage = () => {
   const [searchParams] = useSearchParams();
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -100,11 +125,21 @@ const RoutePage = () => {
 
         if (data.routes && data.routes.length > 0) {
           const route = data.routes[0];
-          setRouteGeoJson({
+          const newRouteGeoJson: Feature<Geometry, GeoJsonProperties> = {
             type: "Feature",
             properties: {},
             geometry: route.geometry,
-          });
+          };
+          setRouteGeoJson(newRouteGeoJson);
+
+          // Fit map to route bounds
+          if (mapRef.current && newRouteGeoJson.geometry) {
+            const bounds = getBounds(newRouteGeoJson.geometry);
+            if (bounds) {
+              mapRef.current.fitBounds(bounds, { padding: 50, duration: 1000 });
+            }
+          }
+
           const leg = route.legs[0];
           setDistance(`${(route.distance / 1000).toFixed(2)} km`);
           setDuration(`${Math.round(route.duration / 60)} min`);
