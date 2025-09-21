@@ -11,6 +11,7 @@ import { MAPBOX_TOKEN } from "@/config";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { calculateDistance, cn } from "@/lib/utils";
+import DevDebugOverlay from "@/components/DevDebugOverlay"; // Import the new debug overlay
 
 const defaultCenter = {
   latitude: 6.5244, // Lagos, Nigeria latitude
@@ -49,6 +50,8 @@ const SearchResultsPage = () => {
   const [productResults, setProductResults] = useState<ProductWithStoreInfo[]>([]);
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("loading");
+
+  const mapRef = useRef<mapboxgl.Map | null>(null); // Ref to get map instance
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -205,6 +208,11 @@ const SearchResultsPage = () => {
             style={{ width: "100%", height: "100%" }}
             mapStyle="mapbox://styles/mapbox/streets-v11"
             mapboxAccessToken={MAPBOX_TOKEN}
+            ref={(instance) => {
+              if (instance) {
+                mapRef.current = instance.getMap();
+              }
+            }}
           >
             {userLocation && (
               <Marker longitude={userLocation.lng} latitude={userLocation.lat} color="#4285F4" />
@@ -309,6 +317,15 @@ const SearchResultsPage = () => {
           </Card>
         </div>
       </div>
+      {import.meta.env.DEV && (
+        <DevDebugOverlay
+          mapboxTokenPresent={!!MAPBOX_TOKEN}
+          geolocationAvailable={!!navigator.geolocation}
+          mapInstanceExists={!!mapRef.current}
+          origin={userLocation}
+          destination={null} // No specific destination on this page
+        />
+      )}
     </div>
   );
 };
