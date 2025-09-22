@@ -3,10 +3,12 @@ import { useSearchParams } from "react-router-dom";
 import Map, { Source, Layer, Marker } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MAPBOX_TOKEN } from "@/config";
-import { Loader2, Clock, Milestone, Navigation2 } from "lucide-react"; // Import Navigation2
+import { Loader2, Clock, Milestone } from "lucide-react"; // Removed Navigation2 as we're using custom SVG
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Feature, GeoJsonProperties, Geometry } from "geojson";
+import StoreIcon from "@/assets/store.svg"; // Import the new store icon
+import NavIcon from "@/assets/nav.svg"; // Import the new navigation icon
 
 const containerStyle = {
   width: "100%",
@@ -159,11 +161,15 @@ const RoutePage = () => {
         }}
       >
         {userLocation && (
-          <Marker longitude={userLocation.lng} latitude={userLocation.lat}>
-            <Navigation2 className="h-8 w-8 text-blue-600 rotate-[-45deg]" /> {/* Directional arrow */}
+          <Marker longitude={userLocation.lng} latitude={userLocation.lat} anchor="bottom">
+            <img src={NavIcon} alt="User Location" className="h-10 w-10" /> {/* 40x40px */}
           </Marker>
         )}
-        {destination && <Marker longitude={destination.lng} latitude={destination.lat} color="#FF0000" />}
+        {destination && (
+          <Marker longitude={destination.lng} latitude={destination.lat} anchor="bottom">
+            <img src={StoreIcon} alt="Store Destination" className="h-10 w-10" /> {/* 40x40px */}
+          </Marker>
+        )}
         {routeGeoJson && (
           <Source id="route" type="geojson" data={routeGeoJson}>
             <Layer
