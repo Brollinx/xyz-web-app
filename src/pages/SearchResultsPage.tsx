@@ -11,6 +11,7 @@ import { MAPBOX_TOKEN } from "@/config";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { calculateDistance, cn } from "@/lib/utils";
+import StoreIcon from "@/assets/store.svg"; // Import the new store icon
 
 const defaultCenter = {
   latitude: 6.5244, // Lagos, Nigeria latitude
@@ -274,7 +275,7 @@ const SearchResultsPage = () => {
                 if (firstProductInStore) handleMarkerClick(firstProductInStore);
               }}
             >
-              <MapPin className="h-8 w-8 text-red-600" /> {/* Custom storefront icon */}
+              <img src={StoreIcon} alt="Store" className="h-8 w-8 text-red-600" /> {/* Custom storefront icon */}
             </Marker>
           ))}
 

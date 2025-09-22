@@ -10,6 +10,7 @@ import { MAPBOX_TOKEN } from "@/config";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import type { Feature, GeoJsonProperties, Geometry } from "geojson";
+import StoreIcon from "@/assets/store.svg"; // Import the new store icon
 
 const containerStyle = {
   width: "100%",
@@ -242,7 +243,9 @@ const StoreDetailsPage = () => {
             }}
           >
             {userLocation && <Marker longitude={userLocation.lng} latitude={userLocation.lat} color="#4285F4" />}
-            <Marker longitude={store.longitude} latitude={store.latitude} color="#FF0000" />
+            <Marker longitude={store.longitude} latitude={store.latitude}>
+              <img src={StoreIcon} alt="Store" className="h-8 w-8 text-red-600" />
+            </Marker>
             {routeGeoJson && (
               <Source id="route" type="geojson" data={routeGeoJson}>
                 <Layer
