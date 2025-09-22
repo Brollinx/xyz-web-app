@@ -6,11 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, Loader2 } from "lucide-react";
+import { Search, MapPin, Loader2, Clock, Milestone } from "lucide-react";
 import { MAPBOX_TOKEN } from "@/config";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { calculateDistance, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils"; // Keep cn for styling
 
 const defaultCenter = {
   latitude: 6.5244, // Lagos, Nigeria latitude
@@ -29,7 +29,8 @@ interface ProductWithStoreInfo {
   storeAddress: string;
   storeLatitude: number;
   storeLongitude: number;
-  distance?: number;
+  walkingDistanceKm?: number; // Road-based distance
+  walkingDurationMinutes?: number; // Road-based duration
 }
 
 interface UserLocation {
@@ -68,6 +69,7 @@ const SearchResultsPage = () => {
   const [productResults, setProductResults] = useState<ProductWithStoreInfo[]>([]);
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("loading");
+  const [loadingDirections, setLoadingDirections] = useState(false);
 
   const mapRef = useRef<mapboxgl.Map | null>(null); // Ref to get map instance
 
@@ -152,31 +154,72 @@ const SearchResultsPage = () => {
     fetchProductResults();
   }, [searchQuery]);
 
-  const processedProductResults = useMemo(() => {
-    if (locationStatus !== "success" || !userLocation || productResults.length === 0) {
-      return productResults;
-    }
+  // Effect to fetch directions for unique stores
+  useEffect(() => {
+    const fetchDirectionsForStores = async () => {
+      if (locationStatus !== "success" || !userLocation || productResults.length === 0) {
+        setLoadingDirections(false);
+        return;
+      }
 
-    return productResults
-      .map(product => ({
-        ...product,
-        distance: calculateDistance(
-          userLocation.lat,
-          userLocation.lng,
-          product.storeLatitude,
-          product.storeLongitude
-        ),
-      }))
-      .sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
-  }, [productResults, userLocation, locationStatus]);
+      setLoadingDirections(true);
+      const uniqueStores = new Map<string, { lat: number; lng: number }>();
+      productResults.forEach(p => {
+        if (!uniqueStores.has(p.storeId)) {
+          uniqueStores.set(p.storeId, { lat: p.storeLatitude, lng: p.storeLongitude });
+        }
+      });
+
+      const directionPromises = Array.from(uniqueStores.entries()).map(async ([storeId, storeLoc]) => {
+        const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${userLocation.lng},${userLocation.lat};${storeLoc.lng},${storeLoc.lat}?geometries=geojson&access_token=${MAPBOX_TOKEN}`;
+        try {
+          const response = await fetch(url);
+          const data = await response.json();
+          if (data.routes && data.routes.length > 0) {
+            const route = data.routes[0];
+            return {
+              storeId,
+              distance: parseFloat((route.distance / 1000).toFixed(1)), // in km, 1 decimal place
+              duration: Math.round(route.duration / 60), // in minutes
+            };
+          }
+        } catch (error) {
+          console.error(`Error fetching directions for store ${storeId}:`, error);
+        }
+        return { storeId, distance: undefined, duration: undefined };
+      });
+
+      const results = await Promise.all(directionPromises);
+      const newStoreDirections = new Map<string, { distance?: number; duration?: number }>();
+      results.forEach(res => {
+        if (res) {
+          newStoreDirections.set(res.storeId, { distance: res.distance, duration: res.duration });
+        }
+      });
+
+      setProductResults(prevResults =>
+        prevResults.map(product => {
+          const directions = newStoreDirections.get(product.storeId);
+          return {
+            ...product,
+            walkingDistanceKm: directions?.distance,
+            walkingDurationMinutes: directions?.duration,
+          };
+        }).sort((a, b) => (a.walkingDistanceKm ?? Infinity) - (b.walkingDistanceKm ?? Infinity))
+      );
+      setLoadingDirections(false);
+    };
+
+    fetchDirectionsForStores();
+  }, [productResults.length, userLocation, locationStatus]); // Rerun when productResults count or userLocation changes
 
   // Effect to fit map bounds to user and nearby stores
   useEffect(() => {
-    if (mapRef.current && userLocation && processedProductResults.length > 0) {
+    if (mapRef.current && userLocation && productResults.length > 0 && !loadingDirections) {
       const pointsToBound: { lat: number; lng: number }[] = [{ lat: userLocation.lat, lng: userLocation.lng }];
 
-      const storesWithin30km = processedProductResults.filter(
-        (result) => result.distance !== undefined && result.distance <= 30
+      const storesWithin30km = productResults.filter(
+        (result) => result.walkingDistanceKm !== undefined && result.walkingDistanceKm <= 30
       );
 
       const uniqueStoresWithin30km = new Set<string>();
@@ -196,7 +239,7 @@ const SearchResultsPage = () => {
         mapRef.current.flyTo({ center: [userLocation.lng, userLocation.lat], zoom: 12, duration: 1000 });
       }
     }
-  }, [userLocation, processedProductResults, mapRef.current]);
+  }, [userLocation, productResults, loadingDirections, mapRef.current]);
 
   const handleMarkerClick = (productResult: ProductWithStoreInfo) => {
     setSelectedProductResult(productResult);
@@ -214,7 +257,7 @@ const SearchResultsPage = () => {
 
   const uniqueStoresForMarkers = useMemo(() => {
     const seenStoreIds = new Set<string>();
-    return processedProductResults.reduce((acc, result) => {
+    return productResults.reduce((acc, result) => {
       if (!seenStoreIds.has(result.storeId)) {
         seenStoreIds.add(result.storeId);
         acc.push({
@@ -226,7 +269,7 @@ const SearchResultsPage = () => {
       }
       return acc;
     }, [] as { id: string; lat: number; lng: number; name: string }[]);
-  }, [processedProductResults]);
+  }, [productResults]);
 
   return (
     <div className="min-h-screen flex flex-col items-center bg-gray-50 p-4">
@@ -270,7 +313,7 @@ const SearchResultsPage = () => {
               latitude={store.lat}
               onClick={(e) => {
                 e.originalEvent.stopPropagation();
-                const firstProductInStore = processedProductResults.find(pr => pr.storeId === store.id);
+                const firstProductInStore = productResults.find(pr => pr.storeId === store.id);
                 if (firstProductInStore) handleMarkerClick(firstProductInStore);
               }}
             >
@@ -305,8 +348,13 @@ const SearchResultsPage = () => {
           <CardContent className="flex-grow p-0">
             <ScrollArea className="h-full w-full">
               <div className="p-4 space-y-3">
-                {processedProductResults.length > 0 ? (
-                  processedProductResults.map((result) => (
+                {loadingDirections && productResults.length > 0 ? (
+                  <div className="flex items-center justify-center p-8">
+                    <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+                    <p>Calculating road distances and times...</p>
+                  </div>
+                ) : productResults.length > 0 ? (
+                  productResults.map((result) => (
                     <div
                       key={result.productId}
                       className={cn(
@@ -340,11 +388,21 @@ const SearchResultsPage = () => {
                               Getting your location to calculate distance...
                             </p>
                           )}
-                          {locationStatus === "success" && result.distance !== undefined && (
-                            <p className="text-sm text-gray-500">Distance: {result.distance} km</p>
-                          )}
-                          {locationStatus === "denied" && (
+                          {locationStatus === "success" && result.walkingDistanceKm !== undefined && result.walkingDurationMinutes !== undefined ? (
+                            <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
+                              <div className="flex items-center gap-1">
+                                <Milestone className="h-4 w-4 text-green-600" />
+                                <span>{result.walkingDistanceKm.toFixed(1)} km</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-4 w-4 text-blue-600" />
+                                <span>{result.walkingDurationMinutes} min</span>
+                              </div>
+                            </div>
+                          ) : locationStatus === "denied" ? (
                             <p className="text-sm text-red-500">Location access denied. Distances not shown.</p>
+                          ) : (
+                            <p className="text-sm text-gray-500">Calculating route...</p>
                           )}
                         </div>
                       </div>
