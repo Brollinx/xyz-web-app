@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import type { Feature, GeoJsonProperties, Geometry } from "geojson";
 import StoreIcon from "@/assets/store.svg"; // Import the new store icon
 import NavIcon from "@/assets/nav.svg"; // Import the new navigation icon
+import mapboxgl, { LinePaint } from "mapbox-gl"; // Import mapboxgl and LinePaint type
 
 const containerStyle = {
   width: "100%",
@@ -180,7 +181,7 @@ const RoutePage = () => {
                 "line-width": 4,
                 "line-join": "round",
                 "line-cap": "round",
-              }}
+              } as LinePaint} // <-- Type assertion added here
             />
           </Source>
         )}

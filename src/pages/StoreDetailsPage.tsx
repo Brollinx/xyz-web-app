@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import Map, { Marker, Source, Layer } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import mapboxgl from "mapbox-gl"; // Import mapboxgl for fitBounds
+import mapboxgl, { LinePaint } from "mapbox-gl"; // Import mapboxgl and LinePaint type
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, Footprints } from "lucide-react";
@@ -256,7 +256,7 @@ const StoreDetailsPage = () => {
                     "line-width": 4,
                     "line-join": "round",
                     "line-cap": "round",
-                  }}
+                  } as LinePaint} // <-- Type assertion added here
                 />
               </Source>
             )}
