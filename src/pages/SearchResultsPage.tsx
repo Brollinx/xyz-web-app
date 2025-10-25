@@ -317,13 +317,11 @@ const SearchResultsPage = () => {
                       onClick={() => navigate(`/store/${result.storeId}?product=${result.productId}`)}
                     >
                       <div className="flex items-center flex-grow">
-                        {result.productImageUrl && (
-                          <img
-                            src={result.productImageUrl}
-                            alt={result.productName}
-                            className="h-16 w-16 object-cover rounded-md mr-4 flex-shrink-0"
-                          />
-                        )}
+                        <img
+                          src={result.productImageUrl || "/placeholder.svg"} // Use placeholder if image URL is missing
+                          alt={result.productName}
+                          className="h-16 w-16 object-cover rounded-md mr-4 flex-shrink-0"
+                        />
                         <div className="flex-grow">
                           <h4 className="font-semibold text-lg">{result.productName}</h4>
                           <p className="text-sm text-gray-700">{result.storeName}</p>
