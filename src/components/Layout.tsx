@@ -12,6 +12,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
 
   const showBackButton = location.pathname !== "/";
+  const showHomeButton = location.pathname !== "/"; // Hide Home button on the root path
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -22,11 +23,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <ChevronLeft className="h-5 w-5" />
             </Button>
           )}
-          <Link to="/">
-            <Button variant="ghost" className="text-primary-foreground hover:bg-primary/80">
-              <Home className="h-5 w-5 mr-2" /> Home
-            </Button>
-          </Link>
+          {showHomeButton && ( // Conditionally render the Home button
+            <Link to="/">
+              <Button variant="ghost" className="text-primary-foreground hover:bg-primary/80">
+                <Home className="h-5 w-5 mr-2" /> Home
+              </Button>
+            </Link>
+          )}
         </div>
         {/* You can add more navigation items or a logo here if needed */}
       </header>
