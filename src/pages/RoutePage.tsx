@@ -1,20 +1,21 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import Map, { Source, Layer, Marker } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MAPBOX_TOKEN } from "@/config";
-import { Loader2, Clock, Milestone } from "lucide-react"; // Removed Navigation2 as we're using custom SVG
+import { Loader2, Clock, Milestone } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Feature, GeoJsonProperties, Geometry } from "geojson";
-import StoreIcon from "@/assets/store.svg"; // Import the new store icon
-import NavIcon from "@/assets/nav.svg"; // Import the new navigation icon
-import mapboxgl, { LinePaint } from "mapbox-gl"; // Import mapboxgl and LinePaint type
+import StoreIcon from "@/assets/store.svg";
+import NavIcon from "@/assets/nav.svg";
+import mapboxgl, { LinePaint } from "mapbox-gl";
+import DevDebugOverlay from "@/components/DevDebugOverlay"; // Import the DevDebugOverlay
 
 const containerStyle = {
   width: "100%",
-  minHeight: "360px", // Ensure map is visible
-  height: "100vh", // Make map fill the entire viewport height
+  minHeight: "360px",
+  height: "100vh",
 };
 
 // Helper function to calculate bounding box from GeoJSON LineString
@@ -48,11 +49,55 @@ const RoutePage = () => {
   const [destination, setDestination] = useState<{ lat: number; lng: number } | null>(null);
   const [routeGeoJson, setRouteGeoJson] = useState<Feature<Geometry, GeoJsonProperties> | null>(null);
   const [loading, setLoading] = useState(true);
-
   const [distance, setDistance] = useState<string | null>(null);
   const [duration, setDuration] = useState<string | null>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null); // Ref to get map instance
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // States for DevDebugOverlay
+  const [mapboxTokenPresent] = useState(!!MAPBOX_TOKEN);
+  const [geolocationAvailable, setGeolocationAvailable] = useState(false);
+  const [mapInstanceExists, setMapInstanceExists] = useState(false);
+  const [lastDirectionsResponseSummary, setLastDirectionsResponseSummary] = useState<any>(null);
+  const [routeError, setRouteError] = useState(false);
+
+  // Effect for continuous user location tracking
+  useEffect(() => {
+    if (navigator.geolocation) {
+      setGeolocationAvailable(true);
+      const watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const newLocation = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          setUserLocation(newLocation);
+          if (mapRef.current) {
+            mapRef.current.flyTo({ center: [newLocation.lng, newLocation.lat], zoom: 15, speed: 1.2 });
+          }
+        },
+        (error) => {
+          console.error("Error watching user location:", error);
+          toast.error("Could not track your location. Please check permissions.");
+          setGeolocationAvailable(false);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 1000 } // Update every 1 second, max age 1 second
+      );
+
+      return () => {
+        navigator.geolocation.clearWatch(watchId);
+        if (debounceTimeoutRef.current) {
+          clearTimeout(debounceTimeoutRef.current);
+        }
+      };
+    } else {
+      setGeolocationAvailable(false);
+      toast.error("Geolocation is not supported by your browser.");
+      setLoading(false); // Stop loading if geolocation is not supported
+    }
+  }, []);
+
+  // Effect to get destination from search parameters
   useEffect(() => {
     const destLat = searchParams.get("lat");
     const destLng = searchParams.get("lng");
@@ -62,90 +107,104 @@ const RoutePage = () => {
     } else {
       toast.error("Destination coordinates are missing.");
       setLoading(false);
-      return;
-    }
-
-    if (navigator.geolocation) {
-      console.log("Geolocation is available.");
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
-          console.log("User location obtained:", position.coords.latitude, position.coords.longitude);
-        },
-        (error) => {
-          console.error("Error getting user location:", error);
-          toast.error("Could not get your location. Cannot calculate route.");
-          setLoading(false);
-        }
-      );
-    } else {
-      console.warn("Geolocation is not supported by your browser.");
-      toast.error("Geolocation is not supported by your browser.");
-      setLoading(false);
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    if (!userLocation || !destination) return;
+  // Debounced function to fetch directions
+  const fetchDirections = useCallback(async (origin: { lat: number; lng: number }, dest: { lat: number; lng: number }) => {
+    setLoading(true);
+    setRouteError(false);
+    const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${origin.lng},${origin.lat};${dest.lng},${dest.lat}?geometries=geojson&access_token=${MAPBOX_TOKEN}`;
+    
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
 
-    const fetchDirections = async () => {
-      const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${userLocation.lng},${userLocation.lat};${destination.lng},${destination.lat}?geometries=geojson&access_token=${MAPBOX_TOKEN}`;
-      
-      console.log("Directions API Request URL (token redacted):", url.replace(`access_token=${MAPBOX_TOKEN}`, "access_token=REDACTED"));
+      setLastDirectionsResponseSummary({
+        code: data.code,
+        message: data.message,
+        routesCount: data.routes?.length,
+        waypointsCount: data.waypoints?.length,
+      });
 
-      try {
-        const response = await fetch(url);
-        const data = await response.json();
+      if (data.routes && data.routes.length > 0) {
+        const route = data.routes[0];
+        const newRouteGeoJson: Feature<Geometry, GeoJsonProperties> = {
+          type: "Feature",
+          properties: {},
+          geometry: route.geometry,
+        };
+        setRouteGeoJson(newRouteGeoJson);
 
-        console.log("Directions API Response:", data);
+        const distanceInMeters = route.distance;
+        const distanceInMiles = distanceInMeters / 1609.34;
 
-        if (data.routes && data.routes.length > 0) {
-          const route = data.routes[0];
-          const newRouteGeoJson: Feature<Geometry, GeoJsonProperties> = {
-            type: "Feature",
-            properties: {},
-            geometry: route.geometry,
-          };
-          setRouteGeoJson(newRouteGeoJson);
-
-          // Fit map to route bounds
-          if (mapRef.current && newRouteGeoJson.geometry) {
-            const bounds = getBounds(newRouteGeoJson.geometry);
-            if (bounds) {
-              mapRef.current.fitBounds(bounds, { padding: 50, duration: 1000 });
-            }
-          }
-
-          const distanceInMeters = route.distance; // Distance from Mapbox is in meters
-          const distanceInMiles = distanceInMeters / 1609.34; // Convert meters to miles
-
-          let formattedDistance: string;
-          if (distanceInMiles < 1000) {
-            formattedDistance = `${distanceInMiles.toFixed(1)} miles`;
-          } else {
-            const distanceInKm = distanceInMeters / 1000; // Convert meters to kilometers
-            formattedDistance = `${distanceInKm.toFixed(1)} km`;
-          }
-          setDistance(formattedDistance);
-          setDuration(`${Math.round(route.duration / 60)} min`);
+        let formattedDistance: string;
+        if (distanceInMiles < 1000) {
+          formattedDistance = `${distanceInMiles.toFixed(1)} miles`;
         } else {
-          toast.error("Could not find a walking route.");
+          const distanceInKm = distanceInMeters / 1000;
+          formattedDistance = `${distanceInKm.toFixed(1)} km`;
         }
-      } catch (error) {
-        console.error("Error fetching directions:", error);
-        toast.error("Failed to fetch walking directions.");
-      } finally {
-        setLoading(false);
+        setDistance(formattedDistance);
+        setDuration(`${Math.round(route.duration / 60)} min`);
+
+        // Fit map to route bounds only if it's the initial route or a significant change
+        if (mapRef.current && newRouteGeoJson.geometry) {
+          const bounds = getBounds(newRouteGeoJson.geometry);
+          if (bounds) {
+            mapRef.current.fitBounds(bounds, { padding: 50, duration: 1000 });
+          }
+        }
+      } else {
+        toast.error("Could not find a walking route.");
+        setRouteGeoJson(null);
+        setDistance(null);
+        setDuration(null);
+        setRouteError(true);
       }
-    };
+    } catch (error) {
+      console.error("Error fetching directions:", error);
+      toast.error("Failed to fetch walking directions.");
+      setRouteGeoJson(null);
+      setDistance(null);
+      setDuration(null);
+      setRouteError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [MAPBOX_TOKEN]);
 
-    fetchDirections();
-  }, [userLocation, destination]);
+  // Effect to trigger debounced fetch directions when userLocation or destination changes
+  useEffect(() => {
+    if (userLocation && destination) {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+      debounceTimeoutRef.current = setTimeout(() => {
+        fetchDirections(userLocation, destination);
+      }, 2000); // Debounce for 2 seconds
+    }
+  }, [userLocation, destination, fetchDirections]);
 
-  if (loading) {
+  // Callback for map load to update debug state
+  const handleMapLoad = useCallback((instance: mapboxgl.Map) => {
+    mapRef.current = instance;
+    setMapInstanceExists(true);
+  }, []);
+
+  const openGoogleMapsDirections = () => {
+    if (userLocation && destination) {
+        const originStr = `${userLocation.lat},${userLocation.lng}`;
+        const destinationStr = `${destination.lat},${destination.lng}`;
+        const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${originStr}&destination=${destinationStr}&travelmode=walking`;
+        window.open(googleMapsUrl, '_blank');
+    } else {
+        toast.error("Cannot open Google Maps: origin or destination missing.");
+    }
+  };
+
+  if (loading && (!userLocation || !destination)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin" />
@@ -167,18 +226,18 @@ const RoutePage = () => {
         mapboxAccessToken={MAPBOX_TOKEN}
         ref={(instance) => {
           if (instance) {
-            mapRef.current = instance.getMap();
+            handleMapLoad(instance.getMap());
           }
         }}
       >
         {userLocation && (
           <Marker longitude={userLocation.lng} latitude={userLocation.lat} anchor="bottom">
-            <img src={NavIcon} alt="User Location" className="h-10 w-10" /> {/* 40x40px */}
+            <img src={NavIcon} alt="User Location" className="h-10 w-10" />
           </Marker>
         )}
         {destination && (
           <Marker longitude={destination.lng} latitude={destination.lat} anchor="bottom">
-            <img src={StoreIcon} alt="Store Destination" className="h-10 w-10" /> {/* 40x40px */}
+            <img src={StoreIcon} alt="Store Destination" className="h-10 w-10" />
           </Marker>
         )}
         {routeGeoJson && (
@@ -191,7 +250,7 @@ const RoutePage = () => {
                 "line-width": 4,
                 "line-join": "round",
                 "line-cap": "round",
-              } as LinePaint} // <-- Type assertion added here
+              } as LinePaint}
             />
           </Source>
         )}
@@ -215,6 +274,17 @@ const RoutePage = () => {
           </CardContent>
         </Card>
       )}
+
+      <DevDebugOverlay
+        mapboxTokenPresent={mapboxTokenPresent}
+        geolocationAvailable={geolocationAvailable}
+        mapInstanceExists={mapInstanceExists}
+        lastDirectionsResponseSummary={lastDirectionsResponseSummary}
+        routeError={routeError}
+        origin={userLocation}
+        destination={destination}
+        onOpenGoogleMaps={openGoogleMapsDirections}
+      />
     </div>
   );
 };
