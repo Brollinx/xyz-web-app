@@ -27,9 +27,7 @@ export function useGeolocation() {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
         });
-        if (status !== 'success') {
-          setStatus('success');
-        }
+        setStatus('success');
       },
       (err) => {
         setError(err);
@@ -51,7 +49,7 @@ export function useGeolocation() {
     return () => {
       navigator.geolocation.clearWatch(watcher);
     };
-  }, [status]);
+  }, []); // Empty dependency array ensures this runs only once
 
   return { location, status, error };
 }
