@@ -119,7 +119,17 @@ const RoutePage = () => {
             }
           }
 
-          setDistance(`${(route.distance / 1000).toFixed(2)} km`);
+          const distanceInMeters = route.distance; // Distance from Mapbox is in meters
+          const distanceInMiles = distanceInMeters / 1609.34; // Convert meters to miles
+
+          let formattedDistance: string;
+          if (distanceInMiles < 1000) {
+            formattedDistance = `${distanceInMiles.toFixed(1)} miles`;
+          } else {
+            const distanceInKm = distanceInMeters / 1000; // Convert meters to kilometers
+            formattedDistance = `${distanceInKm.toFixed(1)} km`;
+          }
+          setDistance(formattedDistance);
           setDuration(`${Math.round(route.duration / 60)} min`);
         } else {
           toast.error("Could not find a walking route.");

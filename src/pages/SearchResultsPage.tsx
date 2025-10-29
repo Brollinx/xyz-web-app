@@ -32,7 +32,8 @@ interface ProductWithStoreInfo {
   storeLongitude: number;
   currency: string; // Added currency
   currency_symbol?: string; // Added currency symbol
-  distance?: number;
+  distance?: number; // Raw distance in miles
+  formattedDistance?: string; // Formatted distance string
 }
 
 interface UserLocation {
@@ -163,15 +164,35 @@ const SearchResultsPage = () => {
     }
 
     return productResults
-      .map(product => ({
-        ...product,
-        distance: calculateDistance(
+      .map(product => {
+        const distanceInMiles = calculateDistance(
           userLocation.lat,
           userLocation.lng,
           product.storeLatitude,
-          product.storeLongitude
-        ),
-      }))
+          product.storeLongitude,
+          'miles' // Calculate in miles first
+        );
+
+        let formattedDistance: string;
+        if (distanceInMiles < 1000) {
+          formattedDistance = `${distanceInMiles.toFixed(1)} miles`;
+        } else {
+          const distanceInKm = calculateDistance(
+            userLocation.lat,
+            userLocation.lng,
+            product.storeLatitude,
+            product.storeLongitude,
+            'km' // Convert to km if 1000 miles or more
+          );
+          formattedDistance = `${distanceInKm.toFixed(1)} km`;
+        }
+
+        return {
+          ...product,
+          distance: distanceInMiles, // Keep raw miles for sorting
+          formattedDistance,
+        };
+      })
       .sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
   }, [productResults, userLocation, locationStatus]);
 
@@ -181,7 +202,7 @@ const SearchResultsPage = () => {
       const pointsToBound: { lat: number; lng: number }[] = [{ lat: userLocation.lat, lng: userLocation.lng }];
 
       const storesWithin30km = processedProductResults.filter(
-        (result) => result.distance !== undefined && result.distance <= 30
+        (result) => result.distance !== undefined && result.distance <= (30 / 1.60934) // Convert 30km to miles for comparison
       );
 
       const uniqueStoresWithin30km = new Set<string>();
@@ -345,8 +366,8 @@ const SearchResultsPage = () => {
                               Getting your location to calculate distance...
                             </p>
                           )}
-                          {locationStatus === "success" && result.distance !== undefined && (
-                            <p className="text-sm text-gray-500">Distance: {result.distance} km</p>
+                          {locationStatus === "success" && result.formattedDistance !== undefined && (
+                            <p className="text-sm text-gray-500">Distance: {result.formattedDistance}</p>
                           )}
                           {locationStatus === "denied" && (
                             <p className="text-sm text-red-500">Location access denied. Distances not shown.</p>
