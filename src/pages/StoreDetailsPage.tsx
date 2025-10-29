@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import type { Feature, GeoJsonProperties, Geometry } from "geojson";
 import StoreIcon from "@/assets/store.svg"; // Import the new store icon
+import { addViewedStore } from "@/utils/viewedItems"; // Import the utility
 
 const containerStyle = {
   width: "100%",
@@ -117,6 +118,10 @@ const StoreDetailsPage = () => {
 
         setStore(storeData);
         setSelectedProduct(productData);
+
+        // Record the viewed store
+        addViewedStore(storeId);
+
       } catch (error) {
         console.error("Error fetching initial details:", error);
         toast.error("Failed to load store and product details.");
@@ -258,7 +263,7 @@ const StoreDetailsPage = () => {
                     "line-width": 4,
                     "line-join": "round",
                     "line-cap": "round",
-                  } as LinePaint} // <-- Type assertion added here
+                  } as LinePaint}
                 />
               </Source>
             )}
