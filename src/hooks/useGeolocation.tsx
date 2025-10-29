@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, createContext, useContext, ReactNode } from 'react';
 import { toast } from 'sonner';
 
 interface Location {
@@ -8,7 +8,15 @@ interface Location {
 
 type LocationStatus = 'idle' | 'loading' | 'success' | 'denied' | 'error';
 
-export function useGeolocation() {
+interface GeolocationContextType {
+  location: Location | null;
+  status: LocationStatus;
+  error: GeolocationPositionError | null;
+  retry: () => void;
+}
+
+// The actual hook logic that powers the provider
+function useGeolocationHook() {
   const [location, setLocation] = useState<Location | null>(null);
   const [status, setStatus] = useState<LocationStatus>('idle');
   const [error, setError] = useState<GeolocationPositionError | null>(null);
@@ -70,3 +78,24 @@ export function useGeolocation() {
 
   return { location, status, error, retry };
 }
+
+const GeolocationContext = createContext<GeolocationContextType | undefined>(undefined);
+
+// The Provider component to wrap your app
+export const GeolocationProvider = ({ children }: { children: ReactNode }) => {
+  const geolocation = useGeolocationHook();
+  return (
+    <GeolocationContext.Provider value={geolocation}>
+      {children}
+    </GeolocationContext.Provider>
+  );
+};
+
+// The context consumer hook for components
+export const useGeolocation = (): GeolocationContextType => {
+  const context = useContext(GeolocationContext);
+  if (context === undefined) {
+    throw new Error('useGeolocation must be used within a GeolocationProvider');
+  }
+  return context;
+};
