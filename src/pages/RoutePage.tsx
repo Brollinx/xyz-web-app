@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import Map, { Source, Layer, Marker } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MAPBOX_TOKEN } from "@/config";
-import { Loader2, Clock, Milestone, Car, Footprints } from "lucide-react"; // Added Footprints
+import { Loader2, Car, Footprints } from "lucide-react"; // Removed Clock, Milestone as they are not used directly in the UI anymore
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import type { Feature, GeoJsonProperties, Geometry } from "geojson";
 import StoreIcon from "@/assets/store.svg";
 import NavIcon from "@/assets/nav.svg";
 import mapboxgl, { LinePaint } from "mapbox-gl";
-import DevDebugOverlay from "@/components/DevDebugOverlay";
+// import DevDebugOverlay from "@/components/DevDebugOverlay"; // Removed import
 
 const containerStyle = {
   width: "100%",
@@ -66,16 +66,16 @@ const RoutePage = () => {
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // States for DevDebugOverlay
-  const [mapboxTokenPresent] = useState(!!MAPBOX_TOKEN);
-  const [geolocationAvailable, setGeolocationAvailable] = useState(false);
-  const [mapInstanceExists, setMapInstanceExists] = useState(false);
-  const [lastDirectionsResponseSummary, setLastDirectionsResponseSummary] = useState<any>(null);
+  // States for DevDebugOverlay (these are now internal to RoutePage if needed for logic, not for display)
+  // const [mapboxTokenPresent] = useState(!!MAPBOX_TOKEN); // No longer needed for display
+  // const [geolocationAvailable, setGeolocationAvailable] = useState(false); // No longer needed for display
+  // const [mapInstanceExists, setMapInstanceExists] = useState(false); // No longer needed for display
+  // const [lastDirectionsResponseSummary, setLastDirectionsResponseSummary] = useState<any>(null); // No longer needed for display
 
   // Effect for continuous user location tracking
   useEffect(() => {
     if (navigator.geolocation) {
-      setGeolocationAvailable(true);
+      // setGeolocationAvailable(true); // No longer needed for display
       const watchId = navigator.geolocation.watchPosition(
         (position) => {
           const newLocation = {
@@ -90,7 +90,7 @@ const RoutePage = () => {
         (error) => {
           console.error("Error watching user location:", error);
           toast.error("Could not track your location. Please check permissions.");
-          setGeolocationAvailable(false);
+          // setGeolocationAvailable(false); // No longer needed for display
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 1000 }
       );
@@ -102,7 +102,7 @@ const RoutePage = () => {
         }
       };
     } else {
-      setGeolocationAvailable(false);
+      // setGeolocationAvailable(false); // No longer needed for display
       toast.error("Geolocation is not supported by your browser.");
       setLoadingInitial(false);
     }
@@ -139,13 +139,13 @@ const RoutePage = () => {
       const response = await fetch(url);
       const data = await response.json();
 
-      setLastDirectionsResponseSummary({
-        code: data.code,
-        message: data.message,
-        routesCount: data.routes?.length,
-        waypointsCount: data.waypoints?.length,
-        mode: mode,
-      });
+      // setLastDirectionsResponseSummary({ // No longer needed for display
+      //   code: data.code,
+      //   message: data.message,
+      //   routesCount: data.routes?.length,
+      //   waypointsCount: data.waypoints?.length,
+      //   mode: mode,
+      // });
 
       if (data.routes && data.routes.length > 0) {
         const route = data.routes[0];
@@ -221,23 +221,24 @@ const RoutePage = () => {
   // Callback for map load to update debug state
   const handleMapLoad = useCallback((instance: mapboxgl.Map) => {
     mapRef.current = instance;
-    setMapInstanceExists(true);
+    // setMapInstanceExists(true); // No longer needed for display
   }, []);
 
-  const openGoogleMapsDirections = () => {
-    if (userLocation && destination) {
-        const originStr = `${userLocation.lat},${userLocation.lng}`;
-        const destinationStr = `${destination.lat},${destination.lng}`;
-        const travelModeParam = selectedTravelMode === 'walking' ? 'walking' : 'driving';
-        const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${originStr}&destination=${destinationStr}&travelmode=${travelModeParam}`;
-        window.open(googleMapsUrl, '_blank');
-    } else {
-        toast.error("Cannot open Google Maps: origin or destination missing.");
-    }
-  };
+  // const openGoogleMapsDirections = () => { // No longer needed as DevDebugOverlay is removed
+  //   if (userLocation && destination) {
+  //       const originStr = `${userLocation.lat},${userLocation.lng}`;
+  //       const destinationStr = `${destination.lat},${destination.lng}`;
+  //       const travelModeParam = selectedTravelMode === 'walking' ? 'walking' : 'driving';
+  //       const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${originStr}&destination=${destinationStr}&travelmode=${travelModeParam}`;
+  //       window.open(googleMapsUrl, '_blank');
+  //   } else {
+  //       toast.error("Cannot open Google Maps: origin or destination missing.");
+  //   }
+  // };
 
+  // const currentRouteError = selectedTravelMode === 'walking' ? walkingRouteSummary.error : drivingRouteSummary.error; // No longer needed for display
   const currentRouteGeoJson = selectedTravelMode === 'walking' ? walkingRouteSummary.geojson : drivingRouteSummary.geojson;
-  const currentRouteError = selectedTravelMode === 'walking' ? walkingRouteSummary.error : drivingRouteSummary.error;
+
 
   if (loadingInitial && (!userLocation || !destination)) {
     return (
@@ -335,17 +336,6 @@ const RoutePage = () => {
           )}
         </CardContent>
       </Card>
-
-      <DevDebugOverlay
-        mapboxTokenPresent={mapboxTokenPresent}
-        geolocationAvailable={geolocationAvailable}
-        mapInstanceExists={mapInstanceExists}
-        lastDirectionsResponseSummary={lastDirectionsResponseSummary}
-        routeError={currentRouteError}
-        origin={userLocation}
-        destination={destination}
-        onOpenGoogleMaps={openGoogleMapsDirections}
-      />
     </div>
   );
 };
