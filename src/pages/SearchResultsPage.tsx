@@ -162,7 +162,7 @@ const SearchResultsPage = () => {
             console.error("Error fetching fallback images:", imagesError);
             // Continue without fallback images
           } else {
-            const nameToImageUrlMap = new Map<string, string>();
+            const nameToImageUrlMap: Map<string, string> = new Map(); // Removed type arguments from constructor
             imagesData.forEach(item => {
               if (item.name && item.image_url && !nameToImageUrlMap.has(item.name)) {
                 nameToImageUrlMap.set(item.name, item.image_url);
