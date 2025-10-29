@@ -55,10 +55,12 @@ const SearchResultsPage = () => {
 
   const { location: userLocation, status: locationStatus } = useGeolocation();
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  const initialBoundsSet = useRef(false);
 
   useEffect(() => {
     const fetchProductResults = async () => {
       setIsLoading(true);
+      initialBoundsSet.current = false; // Reset bounds flag for new search
       try {
         let query = supabase.from('products').select(`
             id, name, price, stock_quantity, is_active, image_url, currency, currency_symbol,
@@ -121,13 +123,16 @@ const SearchResultsPage = () => {
   }, [processedProductResults]);
 
   useEffect(() => {
-    if (mapRef.current && userLocation && uniqueStores.length > 0) {
+    if (mapRef.current && userLocation && uniqueStores.length > 0 && !initialBoundsSet.current) {
       const points = uniqueStores.map(s => ({ lat: s.storeLatitude, lng: s.storeLongitude }));
       points.push({ lat: userLocation.lat, lng: userLocation.lng });
       const bounds = getBoundsForPoints(points);
-      if (bounds) mapRef.current.fitBounds(bounds, { padding: 50, duration: 1000, maxZoom: 14 });
-    } else if (userLocation) {
-      setViewState({ latitude: userLocation.lat, longitude: userLocation.lng, zoom: 12 });
+      if (bounds) {
+        mapRef.current.fitBounds(bounds, { padding: 50, duration: 1500, maxZoom: 14 });
+        initialBoundsSet.current = true;
+      }
+    } else if (userLocation && !initialBoundsSet.current) {
+      mapRef.current?.flyTo({ center: [userLocation.lng, userLocation.lat], zoom: 12, duration: 1500 });
     }
   }, [userLocation, uniqueStores]);
 
@@ -138,19 +143,26 @@ const SearchResultsPage = () => {
 
   const handleMarkerClick = (store: ProductWithStoreInfo) => {
     setSelectedStoreId(store.storeId);
-    setViewState({ latitude: store.storeLatitude, longitude: store.storeLongitude, zoom: 14 });
+    if (mapRef.current) {
+      mapRef.current.flyTo({
+        center: [store.storeLongitude, store.storeLatitude],
+        zoom: 14,
+        duration: 1500,
+        essential: true,
+      });
+    }
   };
 
   return (
     <div className="flex h-screen flex-col bg-gray-50">
-      <div className="p-4 shadow-md">
+      <div className="flex-shrink-0 p-4 shadow-md">
         <form onSubmit={handleSearchSubmit} className="mx-auto flex w-full max-w-4xl items-center space-x-2">
           <Input type="text" placeholder="Search for products..." className="flex-grow" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
           <Button type="submit" disabled={isLoading}><Search className="h-4 w-4" /></Button>
         </form>
       </div>
 
-      <div className="flex flex-grow overflow-hidden">
+      <div className="flex flex-1 overflow-hidden" style={{ minHeight: 0 }}>
         <div className="hidden h-full w-1/2 md:block">
           <Map
             {...viewState}
@@ -163,7 +175,7 @@ const SearchResultsPage = () => {
             {userLocation && <Marker longitude={userLocation.lng} latitude={userLocation.lat} color="#4285F4" />}
             {uniqueStores.map((store) => (
               <Marker key={store.storeId} longitude={store.storeLongitude} latitude={store.storeLatitude} onClick={() => handleMarkerClick(store)}>
-                <img src={StoreIcon} alt="Store" className={cn("h-8 w-8 transition-transform", selectedStoreId === store.storeId && "scale-125")} />
+                <img src={StoreIcon} alt="Store" className={cn("h-8 w-8 cursor-pointer transition-transform duration-300", selectedStoreId === store.storeId ? "scale-125" : "scale-100")} />
               </Marker>
             ))}
             {selectedStoreId && (() => {

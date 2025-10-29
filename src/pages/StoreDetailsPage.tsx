@@ -56,6 +56,7 @@ const StoreDetailsPage = () => {
 
   const { location: userLocation } = useGeolocation();
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  const routeBoundsSet = useRef(false);
 
   useEffect(() => {
     const fetchInitialDetails = async () => {
@@ -101,10 +102,11 @@ const StoreDetailsPage = () => {
           };
           setRouteGeoJson(newRouteGeoJson);
 
-          if (mapRef.current && newRouteGeoJson.geometry) {
+          if (mapRef.current && newRouteGeoJson.geometry && !routeBoundsSet.current) {
             const bounds = getBounds(newRouteGeoJson.geometry);
             if (bounds) {
-              mapRef.current.fitBounds(bounds, { padding: 60, duration: 1000 });
+              mapRef.current.fitBounds(bounds, { padding: 60, duration: 1500 });
+              routeBoundsSet.current = true;
             }
           }
         } else {
@@ -119,6 +121,13 @@ const StoreDetailsPage = () => {
 
     fetchDirections();
   }, [userLocation, store, travelMode]);
+
+  const handleTravelModeChange = (value: TravelMode) => {
+    if (value) {
+      setTravelMode(value);
+      routeBoundsSet.current = false; // Allow refitting for the new route
+    }
+  };
 
   const handleWalkToStore = () => {
     if (!store) return toast.error("Store location is not available.");
@@ -171,7 +180,7 @@ const StoreDetailsPage = () => {
           )}
         </Map>
         <div className="absolute top-4 right-4">
-          <ToggleGroup type="single" value={travelMode} onValueChange={(value: TravelMode) => value && setTravelMode(value)} className="bg-white rounded-md shadow-lg">
+          <ToggleGroup type="single" value={travelMode} onValueChange={handleTravelModeChange} className="bg-white rounded-md shadow-lg">
             <ToggleGroupItem value="walking" aria-label="Toggle walking">
               <Footprints className="h-5 w-5" />
             </ToggleGroupItem>
