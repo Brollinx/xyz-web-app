@@ -11,8 +11,7 @@ import { MAPBOX_TOKEN } from "@/config";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { calculateDistance, cn } from "@/lib/utils";
-import StoreIcon from "@/assets/store.svg";
-import DevDebugOverlay from "@/components/DevDebugOverlay"; // Import DevDebugOverlay
+import StoreIcon from "@/assets/store.svg"; // Import the new store icon
 
 const defaultCenter = {
   latitude: 6.5244, // Lagos, Nigeria latitude
@@ -31,10 +30,10 @@ interface ProductWithStoreInfo {
   storeAddress: string;
   storeLatitude: number;
   storeLongitude: number;
-  currency: string;
-  currency_symbol?: string;
-  distance?: number;
-  formattedDistance?: string;
+  currency: string; // Added currency
+  currency_symbol?: string; // Added currency symbol
+  distance?: number; // Raw distance in miles
+  formattedDistance?: string; // Formatted distance string
 }
 
 interface UserLocation {
@@ -44,6 +43,7 @@ interface UserLocation {
 
 type LocationStatus = "loading" | "success" | "denied";
 
+// Helper function to calculate bounding box for an array of points
 const getBoundsForPoints = (points: { lat: number; lng: number }[]) => {
   if (points.length === 0) return null;
 
@@ -73,106 +73,90 @@ const SearchResultsPage = () => {
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("loading");
 
-  const mapRef = useRef<mapboxgl.Map | null>(null);
-  const watchId = useRef<number | null>(null);
-
-  // Debug states
-  const [geolocationAvailable, setGeolocationAvailable] = useState(false);
+  const mapRef = useRef<mapboxgl.Map | null>(null); // Ref to get map instance
 
   useEffect(() => {
     if (navigator.geolocation) {
-      setGeolocationAvailable(true);
-      watchId.current = navigator.geolocation.watchPosition(
+      navigator.geolocation.getCurrentPosition(
         (position) => {
           const userLoc = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
           };
           setUserLocation(userLoc);
-          // Only set initial viewState if it hasn't been set by a store selection
-          if (!selectedProductResult) {
-            setViewState({ latitude: userLoc.lat, longitude: userLoc.lng, zoom: 12 });
-          }
+          setViewState({ latitude: userLoc.lat, longitude: userLoc.lng, zoom: 12 });
           setLocationStatus("success");
-          console.log("User location updated:", userLoc.lat, userLoc.lng);
+          toast.success("Map centered on your current location!");
         },
         (error) => {
           console.error("Error getting user location:", error);
           setLocationStatus("denied");
           toast.warning("Location access denied. Distances will not be shown. Showing default center (Lagos).");
-          setGeolocationAvailable(false);
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
       );
     } else {
       setLocationStatus("denied");
       toast.warning("Geolocation is not supported by your browser. Showing default center (Lagos).");
-      setGeolocationAvailable(false);
     }
-
-    return () => {
-      if (watchId.current !== null) {
-        navigator.geolocation.clearWatch(watchId.current);
-      }
-    };
-  }, [selectedProductResult]); // Re-run if selectedProductResult changes to reset viewState logic
-
-  const fetchProductResults = useCallback(async () => {
-    try {
-      let query = supabase
-        .from('products')
-        .select(`
-          id, name, price, stock_quantity, is_active, image_url, currency, currency_symbol,
-          stores (id, store_name, address, latitude, longitude, is_active)
-        `)
-        .eq('is_active', true);
-
-      if (searchQuery) {
-        query = query.ilike('name', `%${searchQuery}%`);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error("Error fetching product results:", error);
-        toast.error("Failed to fetch product results. Please try again.");
-        setProductResults([]);
-        return;
-      }
-
-      const fetchedResults: ProductWithStoreInfo[] = data
-        .filter((product: any) => product.stores && product.stores.is_active && product.stores.latitude !== null && product.stores.longitude !== null)
-        .map((product: any) => ({
-          productId: product.id,
-          productName: product.name,
-          productPrice: product.price,
-          stockQuantity: product.stock_quantity,
-          productImageUrl: product.image_url,
-          currency: product.currency || 'USD',
-          currency_symbol: product.currency_symbol || '$',
-          storeId: product.stores.id,
-          storeName: product.stores.store_name,
-          storeAddress: product.stores.address,
-          storeLatitude: product.stores.latitude,
-          storeLongitude: product.stores.longitude,
-        }));
-
-      setProductResults(fetchedResults);
-      if (fetchedResults.length > 0) {
-        toast.success(`Found ${fetchedResults.length} matching products.`);
-      } else {
-        toast.info(`No products found for "${searchQuery}".`);
-      }
-    } catch (error) {
-      console.error("Unexpected error fetching product results:", error);
-      toast.error("An unexpected error occurred.");
-      setProductResults([]);
-    }
-  }, [searchQuery]);
+  }, []);
 
   useEffect(() => {
+    const fetchProductResults = async () => {
+      try {
+        let query = supabase
+          .from('products')
+          .select(`
+            id, name, price, stock_quantity, is_active, image_url, currency, currency_symbol,
+            stores (id, store_name, address, latitude, longitude, is_active)
+          `)
+          .eq('is_active', true);
+
+        if (searchQuery) {
+          query = query.ilike('name', `%${searchQuery}%`);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.error("Error fetching product results:", error);
+          toast.error("Failed to fetch product results. Please try again.");
+          setProductResults([]);
+          return;
+        }
+
+        const fetchedResults: ProductWithStoreInfo[] = data
+          .filter((product: any) => product.stores && product.stores.is_active && product.stores.latitude !== null && product.stores.longitude !== null)
+          .map((product: any) => ({
+            productId: product.id,
+            productName: product.name,
+            productPrice: product.price,
+            stockQuantity: product.stock_quantity,
+            productImageUrl: product.image_url,
+            currency: product.currency || 'USD', // Default to USD if not provided
+            currency_symbol: product.currency_symbol || '$', // Default to $ if not provided
+            storeId: product.stores.id,
+            storeName: product.stores.store_name,
+            storeAddress: product.stores.address,
+            storeLatitude: product.stores.latitude,
+            storeLongitude: product.stores.longitude,
+          }));
+
+        setProductResults(fetchedResults);
+        if (fetchedResults.length > 0) {
+          toast.success(`Found ${fetchedResults.length} matching products.`);
+        } else {
+          toast.info(`No products found for "${searchQuery}".`);
+        }
+      } catch (error) {
+        console.error("Unexpected error fetching product results:", error);
+        toast.error("An unexpected error occurred.");
+        setProductResults([]);
+      }
+    };
+
     fetchProductResults();
-  }, [searchQuery, fetchProductResults]);
+  }, [searchQuery]);
 
   const processedProductResults = useMemo(() => {
     if (locationStatus !== "success" || !userLocation || productResults.length === 0) {
@@ -186,7 +170,7 @@ const SearchResultsPage = () => {
           userLocation.lng,
           product.storeLatitude,
           product.storeLongitude,
-          'miles'
+          'miles' // Calculate in miles first
         );
 
         let formattedDistance: string;
@@ -198,26 +182,27 @@ const SearchResultsPage = () => {
             userLocation.lng,
             product.storeLatitude,
             product.storeLongitude,
-            'km'
+            'km' // Convert to km if 1000 miles or more
           );
           formattedDistance = `${distanceInKm.toFixed(1)} km`;
         }
 
         return {
           ...product,
-          distance: distanceInMiles,
+          distance: distanceInMiles, // Keep raw miles for sorting
           formattedDistance,
         };
       })
       .sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
   }, [productResults, userLocation, locationStatus]);
 
+  // Effect to fit map bounds to user and nearby stores
   useEffect(() => {
     if (mapRef.current && userLocation && processedProductResults.length > 0) {
       const pointsToBound: { lat: number; lng: number }[] = [{ lat: userLocation.lat, lng: userLocation.lng }];
 
       const storesWithin30km = processedProductResults.filter(
-        (result) => result.distance !== undefined && result.distance <= (30 / 1.60934)
+        (result) => result.distance !== undefined && result.distance <= (30 / 1.60934) // Convert 30km to miles for comparison
       );
 
       const uniqueStoresWithin30km = new Set<string>();
@@ -228,12 +213,12 @@ const SearchResultsPage = () => {
         }
       });
 
-      if (pointsToBound.length > 1) {
+      if (pointsToBound.length > 1) { // Need at least user + 1 store to fit bounds meaningfully
         const bounds = getBoundsForPoints(pointsToBound);
         if (bounds) {
           mapRef.current.fitBounds(bounds, { padding: 50, duration: 1000 });
         }
-      } else if (userLocation) {
+      } else if (userLocation) { // If no stores within 30km, just center on user
         mapRef.current.flyTo({ center: [userLocation.lng, userLocation.lat], zoom: 12, duration: 1000 });
       }
     }
@@ -281,7 +266,7 @@ const SearchResultsPage = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <Button type="submit" onClick={fetchProductResults}>
+          <Button type="submit">
             <Search className="h-4 w-4 mr-2" /> Search
           </Button>
         </div>
@@ -315,7 +300,7 @@ const SearchResultsPage = () => {
                 if (firstProductInStore) handleMarkerClick(firstProductInStore);
               }}
             >
-              <img src={StoreIcon} alt="Store" className="h-8 w-8 text-red-600" />
+              <img src={StoreIcon} alt="Store" className="h-8 w-8 text-red-600" /> {/* Custom storefront icon */}
             </Marker>
           ))}
 
@@ -358,7 +343,7 @@ const SearchResultsPage = () => {
                     >
                       <div className="flex items-center flex-grow">
                         <img
-                          src={result.productImageUrl || "/placeholder.svg"}
+                          src={result.productImageUrl || "/placeholder.svg"} // Use placeholder if image URL is missing
                           alt={result.productName}
                           className="h-16 w-16 object-cover rounded-md mr-4 flex-shrink-0"
                         />
@@ -404,13 +389,6 @@ const SearchResultsPage = () => {
           </CardContent>
         </Card>
       </div>
-      <DevDebugOverlay
-        mapboxTokenPresent={!!MAPBOX_TOKEN}
-        geolocationAvailable={geolocationAvailable}
-        mapInstanceExists={!!mapRef.current}
-        origin={userLocation}
-        destination={selectedProductResult ? { lat: selectedProductResult.storeLatitude, lng: selectedProductResult.storeLongitude } : null}
-      />
     </div>
   );
 };
