@@ -30,6 +30,8 @@ interface ProductWithStoreInfo {
   storeAddress: string;
   storeLatitude: number;
   storeLongitude: number;
+  currency: string; // Added currency
+  currency_symbol?: string; // Added currency symbol
   distance?: number;
 }
 
@@ -104,7 +106,7 @@ const SearchResultsPage = () => {
         let query = supabase
           .from('products')
           .select(`
-            id, name, price, stock_quantity, is_active, image_url,
+            id, name, price, stock_quantity, is_active, image_url, currency, currency_symbol,
             stores (id, store_name, address, latitude, longitude, is_active)
           `)
           .eq('is_active', true);
@@ -130,6 +132,8 @@ const SearchResultsPage = () => {
             productPrice: product.price,
             stockQuantity: product.stock_quantity,
             productImageUrl: product.image_url,
+            currency: product.currency || 'USD', // Default to USD if not provided
+            currency_symbol: product.currency_symbol || '$', // Default to $ if not provided
             storeId: product.stores.id,
             storeName: product.stores.store_name,
             storeAddress: product.stores.address,
@@ -291,7 +295,7 @@ const SearchResultsPage = () => {
                 <h3 className="font-bold text-md">{selectedProductResult.storeName}</h3>
                 <p className="text-xs">{selectedProductResult.storeAddress}</p>
                 <p className="text-xs font-medium mt-1">{selectedProductResult.productName}</p>
-                <p className="text-xs">Price: ${selectedProductResult.productPrice.toFixed(2)}</p>
+                <p className="text-xs">Price: {selectedProductResult.currency_symbol}{selectedProductResult.productPrice.toFixed(2)}</p>
               </div>
             </Popup>
           )}
@@ -326,7 +330,9 @@ const SearchResultsPage = () => {
                           <h4 className="font-semibold text-lg">{result.productName}</h4>
                           <p className="text-sm text-gray-700">{result.storeName}</p>
                           <p className="text-sm text-gray-600">{result.storeAddress}</p>
-                          <p className="text-md font-bold text-green-600">Price: ${result.productPrice.toFixed(2)}</p>
+                          <p className="text-md font-bold text-green-600">
+                            {result.currency_symbol}{result.productPrice.toFixed(2)}
+                          </p>
                           <p className="text-sm">
                             Stock:{" "}
                             <span className={result.stockQuantity > 0 ? "text-green-500" : "text-red-500"}>
