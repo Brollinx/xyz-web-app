@@ -14,40 +14,49 @@ export function useGeolocation() {
   const [error, setError] = useState<GeolocationPositionError | null>(null);
 
   useEffect(() => {
+    let watcher: number;
+
     if (!navigator.geolocation) {
       toast.error("Geolocation is not supported by your browser.");
       setStatus('error');
       return;
     }
 
+    const handleSuccess = (position: GeolocationPosition) => {
+      setLocation({
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+      });
+      setStatus('success');
+    };
+
+    const handleError = (err: GeolocationPositionError) => {
+      setError(err);
+      if (err.code === err.PERMISSION_DENIED) {
+        setStatus('denied');
+        toast.warning("Location access denied. Features requiring location will be limited.");
+      } else {
+        setStatus('error');
+        // Provide a more detailed error message
+        toast.error(`Error getting your location: ${err.message}`);
+      }
+    };
+
     setStatus('loading');
-    const watcher = navigator.geolocation.watchPosition(
-      (position) => {
-        setLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        });
-        setStatus('success');
-      },
-      (err) => {
-        setError(err);
-        if (err.code === err.PERMISSION_DENIED) {
-          setStatus('denied');
-          toast.warning("Location access denied. Features requiring location will be limited.");
-        } else {
-          setStatus('error');
-          toast.error("Error getting your location.");
-        }
-      },
+    watcher = navigator.geolocation.watchPosition(
+      handleSuccess,
+      handleError,
       {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 20000, // Increased timeout to 20 seconds
         maximumAge: 0,
       }
     );
 
     return () => {
-      navigator.geolocation.clearWatch(watcher);
+      if (watcher) {
+        navigator.geolocation.clearWatch(watcher);
+      }
     };
   }, []); // Empty dependency array ensures this runs only once
 
