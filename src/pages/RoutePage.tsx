@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import Map, { Source, Layer, Marker } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MAPBOX_TOKEN } from "@/config";
-import { Loader2, Clock, Milestone, Car, Footprints } from "lucide-react"; // Added Footprints
+import { Loader2, Car, Footprints } from "lucide-react"; // Removed Clock, Milestone
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { Feature, GeoJsonProperties, Geometry } from "geojson";
 import StoreIcon from "@/assets/store.svg";
 import NavIcon from "@/assets/nav.svg";
-import mapboxgl, { LinePaint } from "mapbox-gl";
+import * as mapboxgl from "mapbox-gl"; // Import mapboxgl as a namespace
 import DevDebugOverlay from "@/components/DevDebugOverlay";
 
 const containerStyle = {
@@ -304,7 +304,7 @@ const RoutePage = () => {
                 "line-width": 4,
                 "line-join": "round",
                 "line-cap": "round",
-              } as LinePaint}
+              } as mapboxgl.LinePaint}
             />
           </Source>
         )}

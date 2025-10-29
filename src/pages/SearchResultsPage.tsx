@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import Map, { Marker, Popup, ViewState } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -125,7 +125,7 @@ const SearchResultsPage = () => {
           return;
         }
 
-        const fetchedResults: ProductWithStoreInfo[] = data
+        let fetchedResults: ProductWithStoreInfo[] = data
           .filter((product: any) => product.stores && product.stores.is_active && product.stores.latitude !== null && product.stores.longitude !== null)
           .map((product: any) => ({
             productId: product.id,
@@ -141,6 +141,43 @@ const SearchResultsPage = () => {
             storeLatitude: product.stores.latitude,
             storeLongitude: product.stores.longitude,
           }));
+
+        // --- Fallback image logic ---
+        const productNamesWithMissingImages = new Set<string>();
+        fetchedResults.forEach(p => {
+          if (!p.productImageUrl) {
+            productNamesWithMissingImages.add(p.productName);
+          }
+        });
+
+        if (productNamesWithMissingImages.size > 0) {
+          const { data: imagesData, error: imagesError } = await supabase
+            .from('products')
+            .select('name, image_url')
+            .in('name', Array.from(productNamesWithMissingImages))
+            .not('image_url', 'is', null)
+            .limit(100); // Limit to avoid fetching too much data
+
+          if (imagesError) {
+            console.error("Error fetching fallback images:", imagesError);
+            // Continue without fallback images
+          } else {
+            const nameToImageUrlMap = new Map<string, string>();
+            imagesData.forEach(item => {
+              if (item.name && item.image_url && !nameToImageUrlMap.has(item.name)) {
+                nameToImageUrlMap.set(item.name, item.image_url);
+              }
+            });
+
+            fetchedResults = fetchedResults.map(p => {
+              if (!p.productImageUrl && nameToImageUrlMap.has(p.productName)) {
+                return { ...p, productImageUrl: nameToImageUrlMap.get(p.productName) };
+              }
+              return p;
+            });
+          }
+        }
+        // --- End Fallback image logic ---
 
         setProductResults(fetchedResults);
         if (fetchedResults.length > 0) {
