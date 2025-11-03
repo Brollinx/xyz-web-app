@@ -10,7 +10,7 @@ import { Search, MapPin, Loader2 } from "lucide-react";
 import { MAPBOX_TOKEN } from "@/config";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { calculateDistance, cn } from "@/lib/utils";
+import { calculateDistance, formatDistance, cn } from "@/lib/utils"; // Import formatDistance
 import StoreIcon from "@/assets/store.svg"; // Import the new store icon
 
 const defaultCenter = {
@@ -32,7 +32,7 @@ interface ProductWithStoreInfo {
   storeLongitude: number;
   currency: string; // Added currency
   currency_symbol?: string; // Added currency symbol
-  distance?: number; // Raw distance in miles
+  distanceMeters?: number; // Raw distance in meters
   formattedDistance?: string; // Formatted distance string
 }
 
@@ -93,7 +93,7 @@ const SearchResultsPage = () => {
           setLocationStatus("denied");
           toast.warning("Location access denied. Distances will not be shown. Showing default center (Lagos).");
         },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 } // Ensure high accuracy
       );
     } else {
       setLocationStatus("denied");
@@ -165,35 +165,20 @@ const SearchResultsPage = () => {
 
     return productResults
       .map(product => {
-        const distanceInMiles = calculateDistance(
+        const distanceInMeters = calculateDistance(
           userLocation.lat,
           userLocation.lng,
           product.storeLatitude,
-          product.storeLongitude,
-          'miles' // Calculate in miles first
+          product.storeLongitude
         );
-
-        let formattedDistance: string;
-        if (distanceInMiles < 1000) {
-          formattedDistance = `${distanceInMiles.toFixed(1)} miles`;
-        } else {
-          const distanceInKm = calculateDistance(
-            userLocation.lat,
-            userLocation.lng,
-            product.storeLatitude,
-            product.storeLongitude,
-            'km' // Convert to km if 1000 miles or more
-          );
-          formattedDistance = `${distanceInKm.toFixed(1)} km`;
-        }
 
         return {
           ...product,
-          distance: distanceInMiles, // Keep raw miles for sorting
-          formattedDistance,
+          distanceMeters: distanceInMeters, // Keep raw meters for sorting
+          formattedDistance: formatDistance(distanceInMeters),
         };
       })
-      .sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+      .sort((a, b) => (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity));
   }, [productResults, userLocation, locationStatus]);
 
   // Effect to fit map bounds to user and nearby stores
@@ -202,7 +187,7 @@ const SearchResultsPage = () => {
       const pointsToBound: { lat: number; lng: number }[] = [{ lat: userLocation.lat, lng: userLocation.lng }];
 
       const storesWithin30km = processedProductResults.filter(
-        (result) => result.distance !== undefined && result.distance <= (30 / 1.60934) // Convert 30km to miles for comparison
+        (result) => result.distanceMeters !== undefined && result.distanceMeters <= 30000 // 30 km in meters
       );
 
       const uniqueStoresWithin30km = new Set<string>();

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { MapPin, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { calculateDistance, cn } from "@/lib/utils";
+import { calculateDistance, formatDistance, cn } from "@/lib/utils"; // Import formatDistance
 import StoreIcon from "@/assets/store.svg";
 
 interface StoreInfo {
@@ -15,7 +15,7 @@ interface StoreInfo {
   address: string;
   latitude: number;
   longitude: number;
-  distance?: number; // Raw distance in miles
+  distanceMeters?: number; // Raw distance in meters
   formattedDistance?: string; // Formatted distance string
 }
 
@@ -51,7 +51,7 @@ const NearbyStoresPage = () => {
           toast.warning("Location access denied. Cannot show nearby stores.");
           setLoadingStores(false);
         },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 } // Ensure high accuracy
       );
     } else {
       setLocationStatus("denied");
@@ -108,35 +108,20 @@ const NearbyStoresPage = () => {
 
     return stores
       .map(store => {
-        const distanceInMiles = calculateDistance(
+        const distanceInMeters = calculateDistance(
           userLocation.lat,
           userLocation.lng,
           store.latitude,
-          store.longitude,
-          'miles'
+          store.longitude
         );
-
-        let formattedDistance: string;
-        if (distanceInMiles < 1000) {
-          formattedDistance = `${distanceInMiles.toFixed(1)} miles`;
-        } else {
-          const distanceInKm = calculateDistance(
-            userLocation.lat,
-            userLocation.lng,
-            store.latitude,
-            store.longitude,
-            'km'
-          );
-          formattedDistance = `${distanceInKm.toFixed(1)} km`;
-        }
 
         return {
           ...store,
-          distance: distanceInMiles,
-          formattedDistance,
+          distanceMeters: distanceInMeters, // Keep raw meters for sorting
+          formattedDistance: formatDistance(distanceInMeters),
         };
       })
-      .sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+      .sort((a, b) => (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity));
   }, [stores, userLocation, locationStatus]);
 
   if (loadingStores) {
