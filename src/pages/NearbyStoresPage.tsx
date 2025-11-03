@@ -3,11 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { MapPin, Loader2 } from "lucide-react";
+import { MapPin, Loader2, RefreshCw } from "lucide-react"; // Added RefreshCw icon
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { calculateDistance, formatDistance, cn } from "@/lib/utils"; // Import formatDistance
+import { calculateDistance, formatDistance, cn } from "@/lib/utils";
 import StoreIcon from "@/assets/store.svg";
+import { useHighPrecisionGeolocation } from "@/hooks/useHighPrecisionGeolocation"; // Import the new hook
 
 interface StoreInfo {
   id: string;
@@ -15,50 +16,16 @@ interface StoreInfo {
   address: string;
   latitude: number;
   longitude: number;
-  distanceMeters?: number; // Raw distance in meters
-  formattedDistance?: string; // Formatted distance string
+  distanceMeters?: number;
+  formattedDistance?: string;
 }
-
-interface UserLocation {
-  lat: number;
-  lng: number;
-}
-
-type LocationStatus = "loading" | "success" | "denied";
 
 const NearbyStoresPage = () => {
   const navigate = useNavigate();
   const [stores, setStores] = useState<StoreInfo[]>([]);
-  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
-  const [locationStatus, setLocationStatus] = useState<LocationStatus>("loading");
   const [loadingStores, setLoadingStores] = useState(true);
 
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const userLoc = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-          setUserLocation(userLoc);
-          setLocationStatus("success");
-          toast.success("Found your location!");
-        },
-        (error) => {
-          console.error("Error getting user location:", error);
-          setLocationStatus("denied");
-          toast.warning("Location access denied. Cannot show nearby stores.");
-          setLoadingStores(false);
-        },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 } // Ensure high accuracy
-      );
-    } else {
-      setLocationStatus("denied");
-      toast.warning("Geolocation is not supported by your browser. Cannot show nearby stores.");
-      setLoadingStores(false);
-    }
-  }, []);
+  const { userLocation, loading: loadingLocation, locationStatus, refreshLocation } = useHighPrecisionGeolocation(); // Use the new hook
 
   useEffect(() => {
     const fetchStores = async () => {
@@ -66,7 +33,7 @@ const NearbyStoresPage = () => {
         setLoadingStores(false);
         return;
       }
-      if (locationStatus === "loading" && !userLocation) return; // Wait for location if still loading
+      if (locationStatus === "loading" && !userLocation) return;
 
       setLoadingStores(true);
       try {
@@ -99,7 +66,7 @@ const NearbyStoresPage = () => {
     };
 
     fetchStores();
-  }, [userLocation, locationStatus]);
+  }, [userLocation, locationStatus]); // Depend on userLocation and locationStatus from the hook
 
   const processedStores = useMemo(() => {
     if (locationStatus !== "success" || !userLocation || stores.length === 0) {
@@ -117,19 +84,19 @@ const NearbyStoresPage = () => {
 
         return {
           ...store,
-          distanceMeters: distanceInMeters, // Keep raw meters for sorting
+          distanceMeters: distanceInMeters,
           formattedDistance: formatDistance(distanceInMeters),
         };
       })
       .sort((a, b) => (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity));
   }, [stores, userLocation, locationStatus]);
 
-  if (loadingStores) {
+  if (loadingStores || loadingLocation) { // Combine loading states
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin" />
         <p className="ml-4">
-          {locationStatus === "loading" ? "Getting your location..." : "Loading nearby stores..."}
+          {loadingLocation ? "Getting your location..." : "Loading nearby stores..."}
         </p>
       </div>
     );
@@ -139,9 +106,19 @@ const NearbyStoresPage = () => {
     <div className="min-h-screen flex flex-col items-center bg-gray-50 p-4">
       <div className="w-full max-w-4xl text-center space-y-6 mb-8">
         <h1 className="text-4xl font-bold text-gray-900">Nearby Stores</h1>
-        {locationStatus === "denied" && (
-          <p className="text-red-500">Location access denied. Please enable location services to see nearby stores.</p>
-        )}
+        <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
+          {locationStatus === "denied" && (
+            <p className="text-red-500">Location access denied. Please enable location services to see nearby stores.</p>
+          )}
+          {userLocation && (
+            <span className="flex items-center">
+              Location Accuracy: {Math.round(userLocation.accuracy_meters)} m
+              <Button variant="ghost" size="sm" onClick={refreshLocation} className="ml-2 h-auto p-1">
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="w-full max-w-4xl">
@@ -161,7 +138,7 @@ const NearbyStoresPage = () => {
                     >
                       <div className="flex items-center flex-grow">
                         <img
-                          src={StoreIcon} // Using a generic store icon for now
+                          src={StoreIcon}
                           alt={store.store_name}
                           className="h-16 w-16 object-contain rounded-md mr-4 flex-shrink-0"
                         />

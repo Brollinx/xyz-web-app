@@ -208,7 +208,7 @@ const RoutePage = () => {
         <p className="ml-4">Loading map and calculating route...</p>
       </div>
     );
-  }
+  } // Removed the extra ')' and '}' here
 
   return (
     <div className="w-full flex-grow relative">
@@ -299,6 +299,6 @@ const RoutePage = () => {
       </Card>
     </div>
   );
-};
+}; // Removed the extra ')' here
 
 export default RoutePage;

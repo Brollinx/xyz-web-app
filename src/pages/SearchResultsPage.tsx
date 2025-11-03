@@ -6,12 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, Loader2 } from "lucide-react";
+import { Search, MapPin, Loader2, RefreshCw } from "lucide-react"; // Added RefreshCw icon
 import { MAPBOX_TOKEN } from "@/config";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { calculateDistance, formatDistance, cn } from "@/lib/utils"; // Import formatDistance
-import StoreIcon from "@/assets/store.svg"; // Import the new store icon
+import { calculateDistance, formatDistance, cn } from "@/lib/utils";
+import StoreIcon from "@/assets/store.svg";
+import { useHighPrecisionGeolocation } from "@/hooks/useHighPrecisionGeolocation"; // Import the new hook
 
 const defaultCenter = {
   latitude: 6.5244, // Lagos, Nigeria latitude
@@ -30,18 +31,11 @@ interface ProductWithStoreInfo {
   storeAddress: string;
   storeLatitude: number;
   storeLongitude: number;
-  currency: string; // Added currency
-  currency_symbol?: string; // Added currency symbol
-  distanceMeters?: number; // Raw distance in meters
-  formattedDistance?: string; // Formatted distance string
+  currency: string;
+  currency_symbol?: string;
+  distanceMeters?: number;
+  formattedDistance?: string;
 }
-
-interface UserLocation {
-  lat: number;
-  lng: number;
-}
-
-type LocationStatus = "loading" | "success" | "denied";
 
 // Helper function to calculate bounding box for an array of points
 const getBoundsForPoints = (points: { lat: number; lng: number }[]) => {
@@ -70,36 +64,18 @@ const SearchResultsPage = () => {
   const [viewState, setViewState] = useState<Partial<ViewState>>(defaultCenter);
   const [selectedProductResult, setSelectedProductResult] = useState<ProductWithStoreInfo | null>(null);
   const [productResults, setProductResults] = useState<ProductWithStoreInfo[]>([]);
-  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
-  const [locationStatus, setLocationStatus] = useState<LocationStatus>("loading");
 
-  const mapRef = useRef<mapboxgl.Map | null>(null); // Ref to get map instance
+  const { userLocation, loading: loadingLocation, locationStatus, refreshLocation } = useHighPrecisionGeolocation(); // Use the new hook
+
+  const mapRef = useRef<mapboxgl.Map | null>(null);
 
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const userLoc = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-          setUserLocation(userLoc);
-          setViewState({ latitude: userLoc.lat, longitude: userLoc.lng, zoom: 12 });
-          setLocationStatus("success");
-          toast.success("Map centered on your current location!");
-        },
-        (error) => {
-          console.error("Error getting user location:", error);
-          setLocationStatus("denied");
-          toast.warning("Location access denied. Distances will not be shown. Showing default center (Lagos).");
-        },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 } // Ensure high accuracy
-      );
-    } else {
-      setLocationStatus("denied");
-      toast.warning("Geolocation is not supported by your browser. Showing default center (Lagos).");
+    if (locationStatus === "success" && userLocation) {
+      setViewState({ latitude: userLocation.lat, longitude: userLocation.lng, zoom: 12 });
+    } else if (locationStatus === "denied") {
+      toast.warning("Location access denied. Distances will not be shown. Showing default center (Lagos).");
     }
-  }, []);
+  }, [locationStatus, userLocation]);
 
   useEffect(() => {
     const fetchProductResults = async () => {
@@ -133,8 +109,8 @@ const SearchResultsPage = () => {
             productPrice: product.price,
             stockQuantity: product.stock_quantity,
             productImageUrl: product.image_url,
-            currency: product.currency || 'USD', // Default to USD if not provided
-            currency_symbol: product.currency_symbol || '$', // Default to $ if not provided
+            currency: product.currency || 'USD',
+            currency_symbol: product.currency_symbol || '$',
             storeId: product.stores.id,
             storeName: product.stores.store_name,
             storeAddress: product.stores.address,
@@ -174,7 +150,7 @@ const SearchResultsPage = () => {
 
         return {
           ...product,
-          distanceMeters: distanceInMeters, // Keep raw meters for sorting
+          distanceMeters: distanceInMeters,
           formattedDistance: formatDistance(distanceInMeters),
         };
       })
@@ -187,7 +163,7 @@ const SearchResultsPage = () => {
       const pointsToBound: { lat: number; lng: number }[] = [{ lat: userLocation.lat, lng: userLocation.lng }];
 
       const storesWithin30km = processedProductResults.filter(
-        (result) => result.distanceMeters !== undefined && result.distanceMeters <= 30000 // 30 km in meters
+        (result) => result.distanceMeters !== undefined && result.distanceMeters <= 30000
       );
 
       const uniqueStoresWithin30km = new Set<string>();
@@ -198,12 +174,12 @@ const SearchResultsPage = () => {
         }
       });
 
-      if (pointsToBound.length > 1) { // Need at least user + 1 store to fit bounds meaningfully
+      if (pointsToBound.length > 1) {
         const bounds = getBoundsForPoints(pointsToBound);
         if (bounds) {
           mapRef.current.fitBounds(bounds, { padding: 50, duration: 1000 });
         }
-      } else if (userLocation) { // If no stores within 30km, just center on user
+      } else if (userLocation) {
         mapRef.current.flyTo({ center: [userLocation.lng, userLocation.lat], zoom: 12, duration: 1000 });
       }
     }
@@ -255,6 +231,20 @@ const SearchResultsPage = () => {
             <Search className="h-4 w-4 mr-2" /> Search
           </Button>
         </div>
+        <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
+          {loadingLocation ? (
+            <span className="flex items-center"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Getting location...</span>
+          ) : userLocation ? (
+            <span className="flex items-center">
+              Location Accuracy: {Math.round(userLocation.accuracy_meters)} m
+              <Button variant="ghost" size="sm" onClick={refreshLocation} className="ml-2 h-auto p-1">
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </span>
+          ) : (
+            <span className="text-red-500">Location unavailable.</span>
+          )}
+        </div>
       </div>
 
       <div className="w-full max-w-4xl h-[400px] mb-4 rounded-lg overflow-hidden shadow-lg">
@@ -285,7 +275,7 @@ const SearchResultsPage = () => {
                 if (firstProductInStore) handleMarkerClick(firstProductInStore);
               }}
             >
-              <img src={StoreIcon} alt="Store" className="h-8 w-8 text-red-600" /> {/* Custom storefront icon */}
+              <img src={StoreIcon} alt="Store" className="h-8 w-8 text-red-600" />
             </Marker>
           ))}
 
@@ -328,7 +318,7 @@ const SearchResultsPage = () => {
                     >
                       <div className="flex items-center flex-grow">
                         <img
-                          src={result.productImageUrl || "/placeholder.svg"} // Use placeholder if image URL is missing
+                          src={result.productImageUrl || "/placeholder.svg"}
                           alt={result.productName}
                           className="h-16 w-16 object-cover rounded-md mr-4 flex-shrink-0"
                         />
@@ -345,17 +335,15 @@ const SearchResultsPage = () => {
                               {result.stockQuantity > 0 ? "In Stock" : "Out of Stock"}
                             </span>
                           </p>
-                          {locationStatus === "loading" && (
+                          {loadingLocation ? (
                             <p className="text-sm text-gray-500 flex items-center">
                               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                               Getting your location to calculate distance...
                             </p>
-                          )}
-                          {locationStatus === "success" && result.formattedDistance !== undefined && (
+                          ) : userLocation && result.formattedDistance !== undefined ? (
                             <p className="text-sm text-gray-500">Distance: {result.formattedDistance}</p>
-                          )}
-                          {locationStatus === "denied" && (
-                            <p className="text-sm text-red-500">Location access denied. Distances not shown.</p>
+                          ) : (
+                            <p className="text-sm text-red-500">Location unavailable. Distances not shown.</p>
                           )}
                         </div>
                       </div>
