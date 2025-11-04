@@ -7,10 +7,11 @@ import LandingPage from "./pages/LandingPage";
 import SearchResultsPage from "./pages/SearchResultsPage";
 import StoreDetailsPage from "./pages/StoreDetailsPage";
 import RoutePage from "./pages/RoutePage";
-import NearbyStoresPage from "./pages/NearbyStoresPage"; // Import new page
-import FeaturedProductsPage from "./pages/FeaturedProductsPage"; // Import new page
+import NearbyStoresPage from "./pages/NearbyStoresPage";
+import FeaturedProductsPage from "./pages/FeaturedProductsPage";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
+import { ShoppingCartProvider } from "./hooks/useShoppingCart"; // Import the provider
 
 const queryClient = new QueryClient();
 
@@ -20,18 +21,20 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/search-results" element={<SearchResultsPage />} />
-            <Route path="/store/:storeId" element={<StoreDetailsPage />} />
-            <Route path="/route" element={<RoutePage />} />
-            <Route path="/nearby-stores" element={<NearbyStoresPage />} /> {/* New route */}
-            <Route path="/featured-products" element={<FeaturedProductsPage />} /> {/* New route */}
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Layout>
+        <ShoppingCartProvider> {/* Wrap with ShoppingCartProvider */}
+          <Layout>
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/search-results" element={<SearchResultsPage />} />
+              <Route path="/store/:storeId" element={<StoreDetailsPage />} />
+              <Route path="/route" element={<RoutePage />} />
+              <Route path="/nearby-stores" element={<NearbyStoresPage />} />
+              <Route path="/featured-products" element={<FeaturedProductsPage />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Layout>
+        </ShoppingCartProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

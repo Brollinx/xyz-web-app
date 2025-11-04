@@ -5,13 +5,14 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import mapboxgl, { LinePaint } from "mapbox-gl"; // Import mapboxgl and LinePaint type
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Footprints } from "lucide-react";
+import { Loader2, Footprints, ShoppingCart } from "lucide-react"; // Import ShoppingCart icon
 import { MAPBOX_TOKEN } from "@/config";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import type { Feature, GeoJsonProperties, Geometry } from "geojson";
 import StoreIcon from "@/assets/store.svg"; // Import the new store icon
 import { addViewedStore } from "@/utils/viewedItems"; // Import the utility
+import { useShoppingCart } from "@/hooks/useShoppingCart"; // Import the shopping cart hook
 
 const containerStyle = {
   width: "100%",
@@ -83,7 +84,8 @@ const StoreDetailsPage = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [showMoreButton, setShowMoreButton] = useState(true);
 
-  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null); // Corrected initialization
+  const { addItem, getItemQuantity } = useShoppingCart(); // Use the shopping cart hook
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -94,7 +96,7 @@ const StoreDetailsPage = () => {
       }, (error) => {
         console.error("Error getting user location:", error);
         toast.warning("Could not get your location. Route will not be shown.");
-      });
+      }, { enableHighAccuracy: true }); // Ensure high accuracy
     } else {
       console.warn("Geolocation is not supported by your browser.");
       toast.warning("Geolocation is not supported by your browser. Route will not be shown.");
@@ -214,6 +216,23 @@ const StoreDetailsPage = () => {
     navigate(`/route?lat=${store.latitude}&lng=${store.longitude}`);
   };
 
+  const handleAddToList = (product: Product) => {
+    if (!store) {
+      toast.error("Store information is missing, cannot add product to list.");
+      return;
+    }
+    addItem({
+      productId: product.id,
+      productName: product.name,
+      productPrice: product.price,
+      productImageUrl: product.image_url,
+      storeId: store.id,
+      storeName: store.store_name,
+      currency: product.currency,
+      currency_symbol: product.currency_symbol,
+    });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -283,6 +302,14 @@ const StoreDetailsPage = () => {
                 <p className={`text-lg font-semibold ${selectedProduct.stock_quantity > 0 ? "text-green-500" : "text-red-500"}`}>
                   {selectedProduct.stock_quantity > 0 ? "In Stock" : "Out of Stock"}
                 </p>
+                <Button
+                  className="mt-4 w-full md:w-auto"
+                  onClick={() => handleAddToList(selectedProduct)}
+                  disabled={selectedProduct.stock_quantity <= 0}
+                >
+                  <ShoppingCart className="mr-2 h-4 w-4" />
+                  {getItemQuantity(selectedProduct.id) > 0 ? `Add More (${getItemQuantity(selectedProduct.id)} in list)` : "Add to List"}
+                </Button>
               </div>
             </div>
           </CardContent>
@@ -316,6 +343,14 @@ const StoreDetailsPage = () => {
                     <p className={`text-sm ${product.stock_quantity > 0 ? "text-green-500" : "text-red-500"}`}>
                       {product.stock_quantity > 0 ? "In Stock" : "Out of Stock"}
                     </p>
+                    <Button
+                      className="mt-4"
+                      onClick={() => handleAddToList(product)}
+                      disabled={product.stock_quantity <= 0}
+                    >
+                      <ShoppingCart className="mr-2 h-4 w-4" />
+                      {getItemQuantity(product.id) > 0 ? `Add More (${getItemQuantity(product.id)} in list)` : "Add to List"}
+                    </Button>
                   </div>
                 ))}
               </div>
