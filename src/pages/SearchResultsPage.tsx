@@ -6,13 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, Loader2, RefreshCw, Heart } from "lucide-react"; // Added Heart icon
+import { Search, MapPin, Loader2, RefreshCw } from "lucide-react"; // Added RefreshCw icon
 import { MAPBOX_TOKEN } from "@/config";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { calculateDistance, formatDistance, cn } from "@/lib/utils";
 import StoreIcon from "@/assets/store.svg";
-import { useHighPrecisionGeolocation } from "@/hooks/useHighPrecisionGeolocation";
+import { useHighPrecisionGeolocation } from "@/hooks/useHighPrecisionGeolocation"; // Import the new hook
 
 const defaultCenter = {
   latitude: 6.5244, // Lagos, Nigeria latitude
@@ -35,8 +35,6 @@ interface ProductWithStoreInfo {
   currency_symbol?: string;
   distanceMeters?: number;
   formattedDistance?: string;
-  isFavorited?: boolean; // New field to track favorite status
-  favoriteId?: string; // New field to store favorite entry ID
 }
 
 // Helper function to calculate bounding box for an array of points
@@ -66,28 +64,10 @@ const SearchResultsPage = () => {
   const [viewState, setViewState] = useState<Partial<ViewState>>(defaultCenter);
   const [selectedProductResult, setSelectedProductResult] = useState<ProductWithStoreInfo | null>(null);
   const [productResults, setProductResults] = useState<ProductWithStoreInfo[]>([]);
-  const [user, setUser] = useState<any>(null); // State to hold current user
 
-  const { userLocation, loading: loadingLocation, locationStatus, refreshLocation } = useHighPrecisionGeolocation();
+  const { userLocation, loading: loadingLocation, locationStatus, refreshLocation } = useHighPrecisionGeolocation(); // Use the new hook
 
   const mapRef = useRef<mapboxgl.Map | null>(null);
-
-  // Fetch user on mount and listen for auth changes
-  useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-    };
-    fetchUser();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
-    });
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
 
   useEffect(() => {
     if (locationStatus === "success" && userLocation) {
@@ -97,44 +77,33 @@ const SearchResultsPage = () => {
     }
   }, [locationStatus, userLocation]);
 
-  const fetchProductResults = useCallback(async () => {
-    try {
-      let query = supabase
-        .from('products')
-        .select(`
-          id, name, price, stock_quantity, is_active, image_url, currency, currency_symbol,
-          stores (id, store_name, address, latitude, longitude, is_active)
-        `)
-        .eq('is_active', true);
+  useEffect(() => {
+    const fetchProductResults = async () => {
+      try {
+        let query = supabase
+          .from('products')
+          .select(`
+            id, name, price, stock_quantity, is_active, image_url, currency, currency_symbol,
+            stores (id, store_name, address, latitude, longitude, is_active)
+          `)
+          .eq('is_active', true);
 
-      if (searchQuery) {
-        query = query.ilike('name', `%${searchQuery}%`);
-      }
+        if (searchQuery) {
+          query = query.ilike('name', `%${searchQuery}%`);
+        }
 
-      const { data: productsData, error: productsError } = await query;
+        const { data, error } = await query;
 
-      if (productsError) {
-        console.error("Error fetching product results:", productsError);
-        toast.error("Failed to fetch product results. Please try again.");
-        setProductResults([]);
-        return;
-      }
+        if (error) {
+          console.error("Error fetching product results:", error);
+          toast.error("Failed to fetch product results. Please try again.");
+          setProductResults([]);
+          return;
+        }
 
-      let favoritesData: any[] = [];
-      if (user) {
-        const { data: favs, error: favsError } = await supabase
-          .from('favorites')
-          .select('product_id, id')
-          .eq('user_id', user.id);
-        if (favsError) console.error("Error fetching user favorites:", favsError);
-        else favoritesData = favs;
-      }
-
-      const fetchedResults: ProductWithStoreInfo[] = productsData
-        .filter((product: any) => product.stores && product.stores.is_active && product.stores.latitude !== null && product.stores.longitude !== null)
-        .map((product: any) => {
-          const favoriteEntry = favoritesData.find(fav => fav.product_id === product.id);
-          return {
+        const fetchedResults: ProductWithStoreInfo[] = data
+          .filter((product: any) => product.stores && product.stores.is_active && product.stores.latitude !== null && product.stores.longitude !== null)
+          .map((product: any) => ({
             productId: product.id,
             productName: product.name,
             productPrice: product.price,
@@ -147,27 +116,23 @@ const SearchResultsPage = () => {
             storeAddress: product.stores.address,
             storeLatitude: product.stores.latitude,
             storeLongitude: product.stores.longitude,
-            isFavorited: !!favoriteEntry,
-            favoriteId: favoriteEntry?.id,
-          };
-        });
+          }));
 
-      setProductResults(fetchedResults);
-      if (fetchedResults.length > 0) {
-        toast.success(`Found ${fetchedResults.length} matching products.`);
-      } else {
-        toast.info(`No products found for "${searchQuery}".`);
+        setProductResults(fetchedResults);
+        if (fetchedResults.length > 0) {
+          toast.success(`Found ${fetchedResults.length} matching products.`);
+        } else {
+          toast.info(`No products found for "${searchQuery}".`);
+        }
+      } catch (error) {
+        console.error("Unexpected error fetching product results:", error);
+        toast.error("An unexpected error occurred.");
+        setProductResults([]);
       }
-    } catch (error) {
-      console.error("Unexpected error fetching product results:", error);
-      toast.error("An unexpected error occurred.");
-      setProductResults([]);
-    }
-  }, [searchQuery, user]); // Re-run when searchQuery or user changes
+    };
 
-  useEffect(() => {
     fetchProductResults();
-  }, [fetchProductResults]);
+  }, [searchQuery]);
 
   const processedProductResults = useMemo(() => {
     if (locationStatus !== "success" || !userLocation || productResults.length === 0) {
@@ -232,40 +197,6 @@ const SearchResultsPage = () => {
   const handleMapIconClick = (e: React.MouseEvent, productResult: ProductWithStoreInfo) => {
     e.stopPropagation();
     handleMarkerClick(productResult);
-  };
-
-  const handleToggleFavorite = async (product: ProductWithStoreInfo) => {
-    if (!user) {
-      toast.error("You must be logged in to add products to favorites.");
-      return;
-    }
-
-    try {
-      if (product.isFavorited && product.favoriteId) {
-        // Remove from favorites
-        const { error } = await supabase
-          .from('favorites')
-          .delete()
-          .eq('id', product.favoriteId)
-          .eq('user_id', user.id); // Ensure user can only delete their own
-        
-        if (error) throw error;
-        toast.success(`${product.productName} removed from favorites!`);
-      } else {
-        // Add to favorites
-        const { error } = await supabase
-          .from('favorites')
-          .insert({ user_id: user.id, product_id: product.productId, store_id: product.storeId }); // Include store_id
-        
-        if (error) throw error;
-        toast.success(`${product.productName} added to favorites!`);
-      }
-      // Re-fetch products to update favorite status
-      fetchProductResults();
-    } catch (error) {
-      console.error("Error toggling favorite:", error);
-      toast.error("Failed to update favorite status.");
-    }
   };
 
   const uniqueStoresForMarkers = useMemo(() => {
@@ -420,19 +351,6 @@ const SearchResultsPage = () => {
                         <Button variant="ghost" size="icon" onClick={(e) => handleMapIconClick(e, result)}>
                           <MapPin className="h-6 w-6 text-blue-600" />
                         </Button>
-                        {user && ( // Only show favorite button if user is logged in
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation(); // Prevent navigating to store details
-                              handleToggleFavorite(result);
-                            }}
-                            className="ml-1"
-                          >
-                            <Heart className={cn("h-6 w-6", result.isFavorited ? "text-red-500 fill-red-500" : "text-gray-400")} />
-                          </Button>
-                        )}
                       </div>
                     </div>
                   ))

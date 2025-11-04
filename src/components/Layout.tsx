@@ -2,7 +2,6 @@ import React from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Home, ChevronLeft } from "lucide-react";
-import FavoritesDropdown from "./FavoritesDropdown"; // Import the new component
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -32,10 +31,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </Link>
           )}
         </div>
-        <div className="flex items-center space-x-4">
-          <FavoritesDropdown /> {/* Integrate the FavoritesDropdown here */}
-          {/* Add other navigation items or user profile here */}
-        </div>
+        {/* You can add more navigation items or a logo here if needed */}
       </header>
       <main className="flex-grow flex flex-col">
         {children}
