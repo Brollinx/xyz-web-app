@@ -44,14 +44,14 @@ const LandingPage = () => {
         <Button
           variant="ghost"
           className="flex-1 text-lg py-6 rounded-lg hover:bg-blue-100 transition-colors"
-          onClick={() => navigate("/nearby-stores")}
+          onClick={() => console.log("Clicked Nearby")}
         >
           Nearby
         </Button>
         <Button
           variant="ghost"
           className="flex-1 text-lg py-6 rounded-lg hover:bg-blue-100 transition-colors"
-          onClick={() => navigate("/featured-products")}
+          onClick={() => console.log("Clicked Featured")}
         >
           Featured
         </Button>

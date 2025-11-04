@@ -1,105 +1,34 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import Map, { Source, Layer, Marker } from "react-map-gl";
+import Map, { Source, Layer, Marker } from "react-map-gl"; // Added Marker import
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MAPBOX_TOKEN } from "@/config";
-import { Loader2, Car, Footprints } from "lucide-react";
+import { Loader2, Clock, Milestone } from "lucide-react";
 import { toast } from "sonner";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Feature, GeoJsonProperties, Geometry } from "geojson";
-import StoreIcon from "@/assets/store.svg";
-import NavIcon from "@/assets/nav.svg";
-import mapboxgl, { LinePaint } from "mapbox-gl";
-import { formatDistance } from "@/lib/utils"; // Import formatDistance
 
 const containerStyle = {
   width: "100%",
-  minHeight: "360px",
-  height: "100vh",
+  height: "100%",
 };
 
-interface RouteSummary {
-  geojson: Feature<Geometry, GeoJsonProperties> | null;
-  distance: string | null;
-  duration: string | null;
-  error: boolean;
+interface MapboxStep {
+  instructions: string;
 }
-
-// Helper function to calculate bounding box from GeoJSON LineString
-const getBounds = (geometry: Geometry) => {
-  if (geometry.type !== 'LineString') {
-    return null;
-  }
-  const coordinates = geometry.coordinates as [number, number][];
-  if (coordinates.length === 0) {
-    return null;
-  }
-
-  let minLng = Infinity;
-  let minLat = Infinity;
-  let maxLng = -Infinity;
-  let maxLat = -Infinity;
-
-  for (const coord of coordinates) {
-    minLng = Math.min(minLng, coord[0]);
-    minLat = Math.min(minLat, coord[1]);
-    maxLng = Math.max(maxLng, coord[0]);
-    maxLat = Math.max(maxLat, coord[1]);
-  }
-
-  return [[minLng, minLat], [maxLng, maxLat]] as [[number, number], [number, number]];
-};
 
 const RoutePage = () => {
   const [searchParams] = useSearchParams();
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [destination, setDestination] = useState<{ lat: number; lng: number } | null>(null);
-  
-  const [selectedTravelMode, setSelectedTravelMode] = useState<'walking' | 'driving'>('walking');
-  const [walkingRouteSummary, setWalkingRouteSummary] = useState<RouteSummary>({ geojson: null, distance: null, duration: null, error: false });
-  const [drivingRouteSummary, setDrivingRouteSummary] = useState<RouteSummary>({ geojson: null, distance: null, duration: null, error: false });
-  
-  const [loadingInitial, setLoadingInitial] = useState(true); // For initial page load
-  const [loadingRoute, setLoadingRoute] = useState(false); // For active route fetching
-  
-  const mapRef = useRef<mapboxgl.Map | null>(null);
-  const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [routeGeoJson, setRouteGeoJson] = useState<Feature<Geometry, GeoJsonProperties> | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Effect for continuous user location tracking
-  useEffect(() => {
-    if (navigator.geolocation) {
-      const watchId = navigator.geolocation.watchPosition(
-        (position) => {
-          const newLocation = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-          setUserLocation(newLocation);
-          if (mapRef.current) {
-            mapRef.current.flyTo({ center: [newLocation.lng, newLocation.lat], zoom: 15, speed: 1.2 });
-          }
-        },
-        (error) => {
-          console.error("Error watching user location:", error);
-          toast.error("Could not track your location. Please check permissions.");
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 1000 } // Ensure high accuracy
-      );
+  const [distance, setDistance] = useState<string | null>(null);
+  const [duration, setDuration] = useState<string | null>(null);
+  const [steps, setSteps] = useState<MapboxStep[]>([]);
 
-      return () => {
-        navigator.geolocation.clearWatch(watchId);
-        if (debounceTimeoutRef.current) {
-          clearTimeout(debounceTimeoutRef.current);
-        }
-      };
-    } else {
-      toast.error("Geolocation is not supported by your browser.");
-      setLoadingInitial(false);
-    }
-  }, []);
-
-  // Effect to get destination from search parameters
   useEffect(() => {
     const destLat = searchParams.get("lat");
     const destLng = searchParams.get("lng");
@@ -108,129 +37,75 @@ const RoutePage = () => {
       setDestination({ lat: parseFloat(destLat), lng: parseFloat(destLng) });
     } else {
       toast.error("Destination coordinates are missing.");
-      setLoadingInitial(false);
+      setLoading(false);
+    }
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+        },
+        () => {
+          toast.error("Could not get your location. Cannot calculate route.");
+          setLoading(false);
+        }
+      );
+    } else {
+      toast.error("Geolocation is not supported by your browser.");
+      setLoading(false);
     }
   }, [searchParams]);
 
-  // Debounced function to fetch directions
-  const fetchDirections = useCallback(async (
-    origin: { lat: number; lng: number },
-    dest: { lat: number; lng: number },
-    mode: 'walking' | 'driving'
-  ) => {
-    setLoadingRoute(true);
-    // Reset error for the mode being fetched
-    if (mode === 'walking') setWalkingRouteSummary(prev => ({ ...prev, error: false }));
-    else setDrivingRouteSummary(prev => ({ ...prev, error: false }));
-
-    const profile = mode === 'walking' ? 'walking' : 'driving';
-    const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${origin.lng},${origin.lat};${dest.lng},${dest.lat}?geometries=geojson&access_token=${MAPBOX_TOKEN}`;
-    
-    try {
-      const response = await fetch(url);
-      const data = await response.json();
-
-      if (data.routes && data.routes.length > 0) {
-        const route = data.routes[0];
-        const newRouteGeoJson: Feature<Geometry, GeoJsonProperties> = {
-          type: "Feature",
-          properties: {},
-          geometry: route.geometry,
-        };
-
-        const distanceInMeters = route.distance;
-        const formattedDistance = formatDistance(distanceInMeters); // Use new formatDistance utility
-        const formattedDuration = `${Math.round(route.duration / 60)} min`;
-
-        const newSummary = { geojson: newRouteGeoJson, distance: formattedDistance, duration: formattedDuration, error: false };
-
-        if (mode === 'walking') {
-          setWalkingRouteSummary(newSummary);
-        } else {
-          setDrivingRouteSummary(newSummary);
-        }
-
-        // Fit map to route bounds if this is the currently selected mode
-        if (selectedTravelMode === mode && mapRef.current && newRouteGeoJson.geometry) {
-          const bounds = getBounds(newRouteGeoJson.geometry);
-          if (bounds) {
-            mapRef.current.fitBounds(bounds, { padding: 50, duration: 1000 });
-          }
-        }
-      } else {
-        toast.error(`Could not find a ${mode} route.`);
-        if (mode === 'walking') setWalkingRouteSummary(prev => ({ ...prev, geojson: null, distance: null, duration: null, error: true }));
-        else setDrivingRouteSummary(prev => ({ ...prev, geojson: null, distance: null, duration: null, error: true }));
-      }
-    } catch (error) {
-      console.error(`Error fetching ${mode} directions:`, error);
-      toast.error(`Failed to fetch ${mode} directions.`);
-      if (mode === 'walking') setWalkingRouteSummary(prev => ({ ...prev, geojson: null, distance: null, duration: null, error: true }));
-      else setDrivingRouteSummary(prev => ({ ...prev, geojson: null, distance: null, duration: null, error: true }));
-    } finally {
-      setLoadingRoute(false);
-      setLoadingInitial(false); // Ensure initial loading is false after first fetch attempt
-    }
-  }, [MAPBOX_TOKEN, selectedTravelMode]);
-
-  // Effect to trigger debounced fetch directions when userLocation or destination changes
   useEffect(() => {
-    if (userLocation && destination) {
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
-      }
-      debounceTimeoutRef.current = setTimeout(() => {
-        // Fetch for the currently selected mode
-        fetchDirections(userLocation, destination, selectedTravelMode);
-        
-        // Also fetch for the other mode in the background if not already successful or errored
-        const otherMode = selectedTravelMode === 'walking' ? 'driving' : 'walking';
-        const otherModeSummary = otherMode === 'walking' ? walkingRouteSummary : drivingRouteSummary;
-        if (!otherModeSummary.geojson && !otherModeSummary.error) {
-          fetchDirections(userLocation, destination, otherMode);
+    if (!userLocation || !destination) return;
+
+    const fetchDirections = async () => {
+      // Ensure the profile is 'mapbox/walking' and steps are requested
+      const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${userLocation.lng},${userLocation.lat};${destination.lng},${destination.lat}?steps=true&geometries=geojson&access_token=${MAPBOX_TOKEN}`;
+      
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.routes && data.routes.length > 0) {
+          const route = data.routes[0];
+          setRouteGeoJson({
+            type: "Feature",
+            properties: {},
+            geometry: route.geometry,
+          });
+          const leg = route.legs[0];
+          setDistance(`${(route.distance / 1000).toFixed(2)} km`);
+          setDuration(`${Math.round(route.duration / 60)} min`);
+          setSteps(leg.steps); // Mapbox provides instructions in step.instructions
+        } else {
+          toast.error("Could not find a walking route.");
         }
-      }, 2000); // Debounce for 2 seconds
-    }
-  }, [userLocation, destination, fetchDirections, selectedTravelMode, walkingRouteSummary, drivingRouteSummary]);
+      } catch (error) {
+        console.error("Error fetching directions:", error);
+        toast.error("Failed to fetch walking directions.");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Callback for map load to update debug state
-  const handleMapLoad = useCallback((instance: mapboxgl.Map) => {
-    mapRef.current = instance;
-  }, []);
+    fetchDirections();
+  }, [userLocation, destination]);
 
-  const currentRouteGeoJson = selectedTravelMode === 'walking' ? walkingRouteSummary.geojson : drivingRouteSummary.geojson;
-
-
-  if (loadingInitial && (!userLocation || !destination)) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin" />
         <p className="ml-4">Loading map and calculating route...</p>
       </div>
     );
-  } // Removed the extra ')' and '}' here
+  }
 
   return (
     <div className="w-full flex-grow relative">
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-        <Button
-          variant={selectedTravelMode === 'walking' ? 'default' : 'outline'}
-          onClick={() => setSelectedTravelMode('walking')}
-          disabled={loadingRoute && selectedTravelMode === 'walking'}
-        >
-          {loadingRoute && selectedTravelMode === 'walking' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Footprints className="mr-2 h-4 w-4" />}
-          Walk {walkingRouteSummary.duration ? `(${walkingRouteSummary.duration})` : ''}
-        </Button>
-        <Button
-          variant={selectedTravelMode === 'driving' ? 'default' : 'outline'}
-          onClick={() => setSelectedTravelMode('driving')}
-          disabled={loadingRoute && selectedTravelMode === 'driving'}
-        >
-          {loadingRoute && selectedTravelMode === 'driving' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Car className="mr-2 h-4 w-4" />}
-          Drive {drivingRouteSummary.duration ? `(${drivingRouteSummary.duration})` : ''}
-        </Button>
-      </div>
-
       <Map
         initialViewState={{
           longitude: userLocation?.lng || destination?.lng || 0,
@@ -240,65 +115,55 @@ const RoutePage = () => {
         style={containerStyle}
         mapStyle="mapbox://styles/mapbox/streets-v11"
         mapboxAccessToken={MAPBOX_TOKEN}
-        ref={(instance) => {
-          if (instance) {
-            handleMapLoad(instance.getMap());
-          }
-        }}
       >
-        {userLocation && (
-          <Marker longitude={userLocation.lng} latitude={userLocation.lat} anchor="bottom">
-            <img src={NavIcon} alt="User Location" className="h-10 w-10" />
-          </Marker>
-        )}
-        {destination && (
-          <Marker longitude={destination.lng} latitude={destination.lat} anchor="bottom">
-            <img src={StoreIcon} alt="Store Destination" className="h-10 w-10" />
-          </Marker>
-        )}
-        {currentRouteGeoJson && (
-          <Source id="route" type="geojson" data={currentRouteGeoJson}>
+        {userLocation && <Marker longitude={userLocation.lng} latitude={userLocation.lat} color="#4285F4" />}
+        {destination && <Marker longitude={destination.lng} latitude={destination.lat} color="#FF0000" />}
+        {routeGeoJson && (
+          <Source id="route" type="geojson" data={routeGeoJson}>
             <Layer
               id="route-layer"
               type="line"
               paint={{
                 "line-color": "#007cbf",
-                "line-width": 4,
-                "line-join": "round",
-                "line-cap": "round",
-              } as LinePaint}
+                "line-width": 5,
+              }}
             />
           </Source>
         )}
       </Map>
 
-      <Card className="absolute bottom-4 left-1/2 -translate-x-1/2 w-auto max-w-xs bg-white/90 backdrop-blur-sm shadow-lg rounded-lg p-4">
-        <CardContent className="flex flex-col items-center justify-around p-0">
-          {loadingRoute && (
-            <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Calculating route...</span>
+      {steps.length > 0 && (
+        <Card className="absolute top-4 left-4 right-4 w-auto max-w-md m-auto bg-white/90 backdrop-blur-sm shadow-lg">
+          <CardHeader>
+            <CardTitle>Walking Directions</CardTitle>
+            <div className="flex items-center justify-around text-sm text-gray-700 pt-2">
+              {duration && (
+                <div className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-blue-600" />
+                  <span className="font-bold">{duration}</span>
+                </div>
+              )}
+              {distance && (
+                <div className="flex items-center gap-2">
+                  <Milestone className="h-5 w-5 text-green-600" />
+                  <span className="font-bold">{distance}</span>
+                </div>
+              )}
             </div>
-          )}
-          {walkingRouteSummary.duration && (
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
-              <Footprints className="h-5 w-5 text-blue-600" />
-              <span>Walk: {walkingRouteSummary.duration} ({walkingRouteSummary.distance})</span>
-            </div>
-          )}
-          {drivingRouteSummary.duration && (
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
-              <Car className="h-5 w-5 text-green-600" />
-              <span>Drive: {drivingRouteSummary.duration} ({drivingRouteSummary.distance})</span>
-            </div>
-          )}
-          {(!walkingRouteSummary.duration && !drivingRouteSummary.duration && !loadingRoute) && (
-            <p className="text-sm text-gray-500">No route data available.</p>
-          )}
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-48">
+              <ol className="space-y-3 list-decimal list-inside">
+                {steps.map((step, index) => (
+                  <li key={index} className="text-sm" dangerouslySetInnerHTML={{ __html: step.instructions }} />
+                ))}
+              </ol>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
-}; // Removed the extra ')' here
+};
 
 export default RoutePage;
