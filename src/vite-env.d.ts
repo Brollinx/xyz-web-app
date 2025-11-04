@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-    readonly VITE_MAPBOX_TOKEN: string
+    // VITE_MAPBOX_TOKEN is now hardcoded in src/config.ts, so no longer needed here.
   }
   
   interface ImportMeta {

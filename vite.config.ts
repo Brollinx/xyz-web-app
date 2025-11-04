@@ -19,8 +19,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     define: {
-      // Make env variables available in the client
-      'import.meta.env.VITE_MAPBOX_TOKEN': JSON.stringify(env.VITE_MAPBOX_TOKEN),
+      // No longer defining VITE_MAPBOX_TOKEN here as it's hardcoded in src/config.ts
     },
   };
 });
