@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import Map, { Marker, Popup, ViewState } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -6,13 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, Loader2, RefreshCw } from "lucide-react";
+import { Search, MapPin, Loader2, RefreshCw } from "lucide-react"; // Added RefreshCw icon
 import { MAPBOX_TOKEN } from "@/config";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { calculateDistance, formatDistance, cn } from "@/lib/utils";
 import StoreIcon from "@/assets/store.svg";
-import { useHighPrecisionGeolocation } from "@/hooks/useHighPrecisionGeolocation"; // Re-confirming the import path
+import { useHighPrecisionGeolocation } from "@/hooks/useHighPrecisionGeolocation"; // Import the new hook
 
 const defaultCenter = {
   latitude: 6.5244, // Lagos, Nigeria latitude
@@ -65,7 +65,7 @@ const SearchResultsPage = () => {
   const [selectedProductResult, setSelectedProductResult] = useState<ProductWithStoreInfo | null>(null);
   const [productResults, setProductResults] = useState<ProductWithStoreInfo[]>([]);
 
-  const { userLocation, loading: loadingLocation, locationStatus, refreshLocation } = useHighPrecisionGeolocation();
+  const { userLocation, loading: loadingLocation, locationStatus, refreshLocation } = useHighPrecisionGeolocation(); // Use the new hook
 
   const mapRef = useRef<mapboxgl.Map | null>(null);
 

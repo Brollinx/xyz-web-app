@@ -1,26 +1,22 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
-import Map, { Marker } from "react-map-gl";
+import Map, { Marker, Source, Layer } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import mapboxgl from "mapbox-gl";
-import MapboxDirections from "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions";
-import "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions.css";
+import mapboxgl, { LinePaint } from "mapbox-gl"; // Import mapboxgl and LinePaint type
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Footprints, ShoppingCart } from "lucide-react";
+import { Loader2, Footprints } from "lucide-react";
 import { MAPBOX_TOKEN } from "@/config";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { useCart } from "@/context/CartContext";
-import StoreIcon from "@/assets/store.svg";
-import NavIcon from "@/assets/nav.svg";
-
-// Set Mapbox access token globally for the Directions plugin
-mapboxgl.accessToken = MAPBOX_TOKEN;
+import type { Feature, GeoJsonProperties, Geometry } from "geojson";
+import StoreIcon from "@/assets/store.svg"; // Import the new store icon
+import { addViewedStore } from "@/utils/viewedItems"; // Import the utility
 
 const containerStyle = {
   width: "100%",
-  height: "300px",
+  minHeight: "360px", // Ensure map is visible
+  height: "60vh", // Ensure map is visible
 };
 
 interface Product {
@@ -29,8 +25,8 @@ interface Product {
   price: number;
   stock_quantity: number;
   image_url?: string;
-  currency: string;
-  currency_symbol?: string;
+  currency: string; // Added currency
+  currency_symbol?: string; // Added currency symbol
 }
 
 interface StoreInfo {
@@ -46,6 +42,31 @@ interface UserLocation {
   lng: number;
 }
 
+// Helper function to calculate bounding box from GeoJSON LineString
+const getBounds = (geometry: Geometry) => {
+  if (geometry.type !== 'LineString') {
+    return null;
+  }
+  const coordinates = geometry.coordinates as [number, number][];
+  if (coordinates.length === 0) {
+    return null;
+  }
+
+  let minLng = Infinity;
+  let minLat = Infinity;
+  let maxLng = -Infinity;
+  let maxLat = -Infinity;
+
+  for (const coord of coordinates) {
+    minLng = Math.min(minLng, coord[0]);
+    minLat = Math.min(minLat, coord[1]);
+    maxLng = Math.max(maxLng, coord[0]);
+    maxLat = Math.max(maxLat, coord[1]);
+  }
+
+  return [[minLng, minLat], [maxLng, maxLat]] as [[number, number], [number, number]];
+};
+
 const StoreDetailsPage = () => {
   const { storeId } = useParams<{ storeId: string }>();
   const [searchParams] = useSearchParams();
@@ -56,28 +77,27 @@ const StoreDetailsPage = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [otherProducts, setOtherProducts] = useState<Product[]>([]);
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  const [routeGeoJson, setRouteGeoJson] = useState<Feature<Geometry, GeoJsonProperties> | null>(null);
   
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [showMoreButton, setShowMoreButton] = useState(true);
 
   const mapRef = useRef<mapboxgl.Map | null>(null);
-  const directionsRef = useRef<MapboxDirections | null>(null);
-
-  const { addToCart } = useCart();
 
   useEffect(() => {
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
-        },
-        (error) => {
-          console.error("Error getting user location:", error);
-          toast.warning("Could not get your location for route calculation.");
-        },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-      );
+      console.log("Geolocation is available.");
+      navigator.geolocation.getCurrentPosition((position) => {
+        setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
+        console.log("User location obtained:", position.coords.latitude, position.coords.longitude);
+      }, (error) => {
+        console.error("Error getting user location:", error);
+        toast.warning("Could not get your location. Route will not be shown.");
+      });
+    } else {
+      console.warn("Geolocation is not supported by your browser.");
+      toast.warning("Geolocation is not supported by your browser. Route will not be shown.");
     }
 
     const fetchInitialDetails = async () => {
@@ -98,6 +118,10 @@ const StoreDetailsPage = () => {
 
         setStore(storeData);
         setSelectedProduct(productData);
+
+        // Record the viewed store
+        addViewedStore(storeId);
+
       } catch (error) {
         console.error("Error fetching initial details:", error);
         toast.error("Failed to load store and product details.");
@@ -109,39 +133,50 @@ const StoreDetailsPage = () => {
     fetchInitialDetails();
   }, [storeId, productId]);
 
-  // Effect for Mapbox Directions plugin
+  // Effect to fetch and render directions
   useEffect(() => {
-    if (mapRef.current && userLocation && store) {
-      if (directionsRef.current) {
-        directionsRef.current.removeRoutes();
-        directionsRef.current.setOrigin([userLocation.lng, userLocation.lat]);
-        directionsRef.current.setDestination([store.longitude, store.latitude]);
-      } else {
-        const directions = new MapboxDirections({
-          accessToken: MAPBOX_TOKEN,
-          unit: "metric",
-          profile: "mapbox/walking",
-          alternatives: false,
-          geometries: "geojson",
-          controls: { instructions: false, profileSwitcher: false },
-          flyTo: false,
-        });
+    if (!userLocation || !store) return;
 
-        mapRef.current.addControl(directions, "top-left");
-        directionsRef.current = directions;
+    const fetchDirections = async () => {
+      const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${userLocation.lng},${userLocation.lat};${store.longitude},${store.latitude}?geometries=geojson&access_token=${MAPBOX_TOKEN}`;
+      
+      console.log("Directions API Request URL (token redacted):", url.replace(`access_token=${MAPBOX_TOKEN}`, "access_token=REDACTED"));
 
-        directions.setOrigin([userLocation.lng, userLocation.lat]);
-        directions.setDestination([store.longitude, store.latitude]);
-      }
-    }
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
 
-    return () => {
-      if (mapRef.current && directionsRef.current) {
-        mapRef.current.removeControl(directionsRef.current);
-        directionsRef.current = null;
+        console.log("Directions API Response:", data);
+
+        if (data.routes && data.routes.length > 0) {
+          const route = data.routes[0];
+          const newRouteGeoJson: Feature<Geometry, GeoJsonProperties> = {
+            type: "Feature",
+            properties: {},
+            geometry: route.geometry,
+          };
+          setRouteGeoJson(newRouteGeoJson);
+
+          // Fit map to route bounds
+          if (mapRef.current && newRouteGeoJson.geometry) {
+            const bounds = getBounds(newRouteGeoJson.geometry);
+            if (bounds) {
+              mapRef.current.fitBounds(bounds, { padding: 50, duration: 1000 });
+            }
+          }
+        } else {
+          toast.error("Could not find a walking route to the store.");
+          setRouteGeoJson(null); // Clear any previous route
+        }
+      } catch (error) {
+        console.error("Error fetching directions:", error);
+        toast.error("Failed to fetch walking directions to the store.");
+        setRouteGeoJson(null); // Clear any previous route
       }
     };
-  }, [mapRef.current, userLocation, store]);
+
+    fetchDirections();
+  }, [userLocation, store]);
 
 
   const handleFetchMoreProducts = async () => {
@@ -179,25 +214,13 @@ const StoreDetailsPage = () => {
     navigate(`/route?lat=${store.latitude}&lng=${store.longitude}`);
   };
 
-  const handleAddToCart = () => {
-    if (selectedProduct && store) {
-      addToCart({
-        productId: selectedProduct.id,
-        productName: selectedProduct.name,
-        productPrice: selectedProduct.price,
-        productImageUrl: selectedProduct.image_url,
-        storeId: store.id,
-        storeName: store.store_name,
-        currency: selectedProduct.currency || 'USD',
-        currency_symbol: selectedProduct.currency_symbol || '$',
-      });
-    } else {
-      toast.error("Cannot add product to list. Product or store details missing.");
-    }
-  };
-
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-12 w-12 animate-spin" /></div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin" />
+        <p className="ml-4">Loading store and product details...</p>
+      </div>
+    );
   }
 
   if (!store || !selectedProduct) return <div className="text-center p-8">Could not load store or product details.</div>;
@@ -226,8 +249,24 @@ const StoreDetailsPage = () => {
               }
             }}
           >
-            {userLocation && <Marker longitude={userLocation.lng} latitude={userLocation.lat} anchor="bottom"><img src={NavIcon} alt="User Location" className="h-10 w-10" /></Marker>}
-            <Marker longitude={store.longitude} latitude={store.latitude} anchor="bottom"><img src={StoreIcon} alt="Store Location" className="h-10 w-10" /></Marker>
+            {userLocation && <Marker longitude={userLocation.lng} latitude={userLocation.lat} color="#4285F4" />}
+            <Marker longitude={store.longitude} latitude={store.latitude}>
+              <img src={StoreIcon} alt="Store" className="h-8 w-8 text-red-600" />
+            </Marker>
+            {routeGeoJson && (
+              <Source id="route" type="geojson" data={routeGeoJson}>
+                <Layer
+                  id="route-layer"
+                  type="line"
+                  paint={{
+                    "line-color": "#007cbf",
+                    "line-width": 4,
+                    "line-join": "round",
+                    "line-cap": "round",
+                  } as LinePaint}
+                />
+              </Source>
+            )}
           </Map>
         </div>
 
@@ -244,9 +283,6 @@ const StoreDetailsPage = () => {
                 <p className={`text-lg font-semibold ${selectedProduct.stock_quantity > 0 ? "text-green-500" : "text-red-500"}`}>
                   {selectedProduct.stock_quantity > 0 ? "In Stock" : "Out of Stock"}
                 </p>
-                <Button onClick={handleAddToCart} className="mt-4" disabled={selectedProduct.stock_quantity <= 0}>
-                  <ShoppingCart className="mr-2 h-4 w-4" /> Add to Shopping List
-                </Button>
               </div>
             </div>
           </CardContent>
@@ -280,18 +316,6 @@ const StoreDetailsPage = () => {
                     <p className={`text-sm ${product.stock_quantity > 0 ? "text-green-500" : "text-red-500"}`}>
                       {product.stock_quantity > 0 ? "In Stock" : "Out of Stock"}
                     </p>
-                    <Button onClick={() => addToCart({
-                      productId: product.id,
-                      productName: product.name,
-                      productPrice: product.price,
-                      productImageUrl: product.image_url,
-                      storeId: store.id,
-                      storeName: store.store_name,
-                      currency: product.currency || 'USD',
-                      currency_symbol: product.currency_symbol || '$',
-                    })} className="mt-2" disabled={product.stock_quantity <= 0}>
-                      <ShoppingCart className="mr-2 h-4 w-4" /> Add
-                    </Button>
                   </div>
                 ))}
               </div>

@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
 import React, { useState } from "react";
 import Logo from "@/assets/Logo.png"; // Import the logo as PNG
@@ -44,14 +44,14 @@ const LandingPage = () => {
         <Button
           variant="ghost"
           className="flex-1 text-lg py-6 rounded-lg hover:bg-blue-100 transition-colors"
-          onClick={() => console.log("Clicked Nearby")}
+          onClick={() => navigate("/nearby-stores")}
         >
           Nearby
         </Button>
         <Button
           variant="ghost"
           className="flex-1 text-lg py-6 rounded-lg hover:bg-blue-100 transition-colors"
-          onClick={() => console.log("Clicked Featured")}
+          onClick={() => navigate("/featured-products")}
         >
           Featured
         </Button>

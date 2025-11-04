@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import Map, { Source, Layer, Marker } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -10,8 +10,8 @@ import { Button } from "@/components/ui/button";
 import type { Feature, GeoJsonProperties, Geometry } from "geojson";
 import StoreIcon from "@/assets/store.svg";
 import NavIcon from "@/assets/nav.svg";
-import { LinePaint } from "mapbox-gl"; // Only import LinePaint if needed, not mapboxgl itself
-import { formatDistance } from "@/lib/utils";
+import mapboxgl, { LinePaint } from "mapbox-gl";
+import { formatDistance } from "@/lib/utils"; // Import formatDistance
 
 const containerStyle = {
   width: "100%",
@@ -60,8 +60,8 @@ const RoutePage = () => {
   const [walkingRouteSummary, setWalkingRouteSummary] = useState<RouteSummary>({ geojson: null, distance: null, duration: null, error: false });
   const [drivingRouteSummary, setDrivingRouteSummary] = useState<RouteSummary>({ geojson: null, distance: null, duration: null, error: false });
   
-  const [loadingInitial, setLoadingInitial] = useState(true);
-  const [loadingRoute, setLoadingRoute] = useState(false);
+  const [loadingInitial, setLoadingInitial] = useState(true); // For initial page load
+  const [loadingRoute, setLoadingRoute] = useState(false); // For active route fetching
   
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -84,7 +84,7 @@ const RoutePage = () => {
           console.error("Error watching user location:", error);
           toast.error("Could not track your location. Please check permissions.");
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 1000 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 1000 } // Ensure high accuracy
       );
 
       return () => {
@@ -139,7 +139,7 @@ const RoutePage = () => {
         };
 
         const distanceInMeters = route.distance;
-        const formattedDistance = formatDistance(distanceInMeters);
+        const formattedDistance = formatDistance(distanceInMeters); // Use new formatDistance utility
         const formattedDuration = `${Math.round(route.duration / 60)} min`;
 
         const newSummary = { geojson: newRouteGeoJson, distance: formattedDistance, duration: formattedDuration, error: false };
@@ -169,7 +169,7 @@ const RoutePage = () => {
       else setDrivingRouteSummary(prev => ({ ...prev, geojson: null, distance: null, duration: null, error: true }));
     } finally {
       setLoadingRoute(false);
-      setLoadingInitial(false);
+      setLoadingInitial(false); // Ensure initial loading is false after first fetch attempt
     }
   }, [MAPBOX_TOKEN, selectedTravelMode]);
 
@@ -189,7 +189,7 @@ const RoutePage = () => {
         if (!otherModeSummary.geojson && !otherModeSummary.error) {
           fetchDirections(userLocation, destination, otherMode);
         }
-      }, 2000);
+      }, 2000); // Debounce for 2 seconds
     }
   }, [userLocation, destination, fetchDirections, selectedTravelMode, walkingRouteSummary, drivingRouteSummary]);
 
@@ -208,7 +208,7 @@ const RoutePage = () => {
         <p className="ml-4">Loading map and calculating route...</p>
       </div>
     );
-  }
+  } // Removed the extra ')' and '}' here
 
   return (
     <div className="w-full flex-grow relative">
@@ -299,6 +299,6 @@ const RoutePage = () => {
       </Card>
     </div>
   );
-};
+}; // Removed the extra ')' here
 
 export default RoutePage;

@@ -7,10 +7,10 @@ import LandingPage from "./pages/LandingPage";
 import SearchResultsPage from "./pages/SearchResultsPage";
 import StoreDetailsPage from "./pages/StoreDetailsPage";
 import RoutePage from "./pages/RoutePage";
-import ShoppingCartPage from "./pages/ShoppingCartPage"; // Import the new page
+import NearbyStoresPage from "./pages/NearbyStoresPage"; // Import new page
+import FeaturedProductsPage from "./pages/FeaturedProductsPage"; // Import new page
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
-import { CartProvider } from "@/context/CartContext"; // Updated import to use alias
 
 const queryClient = new QueryClient();
 
@@ -20,19 +20,18 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <CartProvider> {/* Wrap the entire app with CartProvider */}
-          <Layout>
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/search-results" element={<SearchResultsPage />} />
-              <Route path="/store/:storeId" element={<StoreDetailsPage />} />
-              <Route path="/route" element={<RoutePage />} />
-              <Route path="/shopping-list" element={<ShoppingCartPage />} /> {/* Add the new route */}
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Layout>
-        </CartProvider>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/search-results" element={<SearchResultsPage />} />
+            <Route path="/store/:storeId" element={<StoreDetailsPage />} />
+            <Route path="/route" element={<RoutePage />} />
+            <Route path="/nearby-stores" element={<NearbyStoresPage />} /> {/* New route */}
+            <Route path="/featured-products" element={<FeaturedProductsPage />} /> {/* New route */}
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Layout>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
