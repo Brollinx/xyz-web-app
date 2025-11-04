@@ -1,22 +1,23 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import Map, { Marker, Source, Layer } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import mapboxgl, { LinePaint } from "mapbox-gl"; // Import mapboxgl and LinePaint type
+import mapboxgl, { LinePaint } from "mapbox-gl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Footprints } from "lucide-react";
+import { Input } from "@/components/ui/input"; // Import Input component
+import { Loader2, Footprints, Search } from "lucide-react"; // Import Search icon
 import { MAPBOX_TOKEN } from "@/config";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import type { Feature, GeoJsonProperties, Geometry } from "geojson";
-import StoreIcon from "@/assets/store.svg"; // Import the new store icon
-import { addViewedStore } from "@/utils/viewedItems"; // Import the utility
+import StoreIcon from "@/assets/store.svg";
+import { addViewedStore } from "@/utils/viewedItems";
 
 const containerStyle = {
   width: "100%",
-  minHeight: "360px", // Ensure map is visible
-  height: "60vh", // Ensure map is visible
+  minHeight: "360px",
+  height: "60vh",
 };
 
 interface Product {
@@ -25,8 +26,8 @@ interface Product {
   price: number;
   stock_quantity: number;
   image_url?: string;
-  currency: string; // Added currency
-  currency_symbol?: string; // Added currency symbol
+  currency: string;
+  currency_symbol?: string;
 }
 
 interface StoreInfo {
@@ -42,7 +43,6 @@ interface UserLocation {
   lng: number;
 }
 
-// Helper function to calculate bounding box from GeoJSON LineString
 const getBounds = (geometry: Geometry) => {
   if (geometry.type !== 'LineString') {
     return null;
@@ -75,7 +75,8 @@ const StoreDetailsPage = () => {
 
   const [store, setStore] = useState<StoreInfo | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [otherProducts, setOtherProducts] = useState<Product[]>([]);
+  const [allStoreProducts, setAllStoreProducts] = useState<Product[]>([]); // Store all products
+  const [productSearchQuery, setProductSearchQuery] = useState(""); // New state for product search
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [routeGeoJson, setRouteGeoJson] = useState<Feature<Geometry, GeoJsonProperties> | null>(null);
   
@@ -114,21 +115,9 @@ const StoreDetailsPage = () => {
 
         if (storeError) throw storeError;
         setStore(storeData);
-        addViewedStore(storeId); // Record the viewed store
+        addViewedStore(storeId);
 
         let productToSelect: Product | null = null;
-        let otherProductsList: Product[] = [];
-
-        if (productId) {
-          // If a specific product ID is provided, fetch it
-          const { data: productData, error: productError } = await supabase
-            .from("products")
-            .select(`id, name, price, stock_quantity, image_url, currency, currency_symbol`)
-            .eq("id", productId)
-            .single();
-          if (productError) console.warn("Specific product not found, fetching all products for store instead.", productError);
-          else productToSelect = productData;
-        }
 
         // Fetch all active products for the store
         const { data: allProductsData, error: allProductsError } = await supabase
@@ -138,21 +127,22 @@ const StoreDetailsPage = () => {
           .eq("is_active", true);
 
         if (allProductsError) throw allProductsError;
+        setAllStoreProducts(allProductsData || []); // Store all products
+
+        if (productId) {
+          // If a specific product ID is provided, find it in the fetched data
+          productToSelect = allProductsData?.find(p => p.id === productId) || null;
+          if (!productToSelect) {
+            console.warn("Specific product not found in store's active products.");
+          }
+        }
 
         if (!productToSelect && allProductsData && allProductsData.length > 0) {
           // If no specific product was found or provided, select the first active product
           productToSelect = allProductsData[0];
-          otherProductsList = allProductsData.slice(1);
-        } else if (productToSelect) {
-          // If a specific product was found, filter it out from otherProductsList
-          otherProductsList = allProductsData.filter(p => p.id !== productToSelect?.id);
-        } else {
-          // No products found at all
-          otherProductsList = [];
         }
         
         setSelectedProduct(productToSelect);
-        setOtherProducts(otherProductsList);
 
       } catch (error) {
         console.error("Error fetching initial details:", error);
@@ -210,7 +200,6 @@ const StoreDetailsPage = () => {
     fetchDirections();
   }, [userLocation, store]);
 
-
   const handleWalkToStore = () => {
     if (!store) {
       toast.error("Store location is not available.");
@@ -222,6 +211,18 @@ const StoreDetailsPage = () => {
     }
     navigate(`/route?lat=${store.latitude}&lng=${store.longitude}`);
   };
+
+  // Filter products based on search query
+  const filteredProducts = useMemo(() => {
+    const productsToFilter = allStoreProducts.filter(p => p.id !== selectedProduct?.id);
+    if (!productSearchQuery) {
+      return productsToFilter;
+    }
+    const lowerCaseQuery = productSearchQuery.toLowerCase();
+    return productsToFilter.filter(product =>
+      product.name.toLowerCase().includes(lowerCaseQuery)
+    );
+  }, [allStoreProducts, selectedProduct, productSearchQuery]);
 
   if (loading) {
     return (
@@ -306,23 +307,41 @@ const StoreDetailsPage = () => {
             </Button>
         </div>
 
-        {otherProducts.length > 0 && (
+        {allStoreProducts.length > 1 && ( // Only show "Other Products" if there are more than just the selected one
           <Card>
-            <CardHeader><CardTitle>Other Products at {store.store_name}</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Other Products at {store.store_name}</CardTitle>
+            </CardHeader>
             <CardContent>
+              <div className="flex items-center space-x-2 mb-4">
+                <Input
+                  type="text"
+                  placeholder="Search products in this store..."
+                  className="flex-grow"
+                  value={productSearchQuery}
+                  onChange={(e) => setProductSearchQuery(e.target.value)}
+                />
+                <Button type="button" size="icon">
+                  <Search className="h-4 w-4" />
+                </Button>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {otherProducts.map((product) => (
-                  <div key={product.id} className="border rounded-lg p-4 flex flex-col">
-                    <img src={product.image_url || "/placeholder.svg"} alt={product.name} className="w-full h-40 object-cover rounded-md mb-4" />
-                    <h3 className="font-semibold text-lg flex-grow">{product.name}</h3>
-                    <p className="text-md font-bold text-green-600">
-                      {product.currency_symbol}{product.price.toFixed(2)}
-                    </p>
-                    <p className={`text-sm ${product.stock_quantity > 0 ? "text-green-500" : "text-red-500"}`}>
-                      {product.stock_quantity > 0 ? "In Stock" : "Out of Stock"}
-                    </p>
-                  </div>
-                ))}
+                {filteredProducts.length > 0 ? (
+                  filteredProducts.map((product) => (
+                    <div key={product.id} className="border rounded-lg p-4 flex flex-col">
+                      <img src={product.image_url || "/placeholder.svg"} alt={product.name} className="w-full h-40 object-cover rounded-md mb-4" />
+                      <h3 className="font-semibold text-lg flex-grow">{product.name}</h3>
+                      <p className="text-md font-bold text-green-600">
+                        {product.currency_symbol}{product.price.toFixed(2)}
+                      </p>
+                      <p className={`text-sm ${product.stock_quantity > 0 ? "text-green-500" : "text-red-500"}`}>
+                        {product.stock_quantity > 0 ? "In Stock" : "Out of Stock"}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-center text-gray-500 col-span-full">No products found matching your search.</p>
+                )}
               </div>
             </CardContent>
           </Card>
