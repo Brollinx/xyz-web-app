@@ -1,16 +1,19 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import Map, { Marker } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import mapboxgl from "mapbox-gl"; // Import mapboxgl
-import MapboxDirections from "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions"; // Import MapboxDirections
-import "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions.css"; // Import directions CSS
+import mapboxgl from "mapbox-gl";
+import MapboxDirections from "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions";
+import "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions.css";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Footprints } from "lucide-react";
+import { Loader2, Footprints, ShoppingCart } from "lucide-react";
 import { MAPBOX_TOKEN } from "@/config";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { useCart } from "@/context/CartContext";
+import StoreIcon from "@/assets/store.svg";
+import NavIcon from "@/assets/nav.svg";
 
 // Set Mapbox access token globally for the Directions plugin
 mapboxgl.accessToken = MAPBOX_TOKEN;
@@ -26,6 +29,8 @@ interface Product {
   price: number;
   stock_quantity: number;
   image_url?: string;
+  currency: string;
+  currency_symbol?: string;
 }
 
 interface StoreInfo {
@@ -59,11 +64,20 @@ const StoreDetailsPage = () => {
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const directionsRef = useRef<MapboxDirections | null>(null);
 
+  const { addToCart } = useCart();
+
   useEffect(() => {
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((position) => {
-        setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
-      });
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
+        },
+        (error) => {
+          console.error("Error getting user location:", error);
+          toast.warning("Could not get your location for route calculation.");
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      );
     }
 
     const fetchInitialDetails = async () => {
@@ -75,7 +89,7 @@ const StoreDetailsPage = () => {
       setLoading(true);
       try {
         const storePromise = supabase.from("stores").select(`id, store_name, address, latitude, longitude`).eq("id", storeId).single();
-        const productPromise = supabase.from("products").select(`id, name, price, stock_quantity, image_url`).eq("id", productId).single();
+        const productPromise = supabase.from("products").select(`id, name, price, stock_quantity, image_url, currency, currency_symbol`).eq("id", productId).single();
         
         const [{ data: storeData, error: storeError }, { data: productData, error: productError }] = await Promise.all([storePromise, productPromise]);
 
@@ -99,7 +113,7 @@ const StoreDetailsPage = () => {
   useEffect(() => {
     if (mapRef.current && userLocation && store) {
       if (directionsRef.current) {
-        directionsRef.current.removeRoutes(); // Clear existing routes
+        directionsRef.current.removeRoutes();
         directionsRef.current.setOrigin([userLocation.lng, userLocation.lat]);
         directionsRef.current.setDestination([store.longitude, store.latitude]);
       } else {
@@ -109,8 +123,8 @@ const StoreDetailsPage = () => {
           profile: "mapbox/walking",
           alternatives: false,
           geometries: "geojson",
-          controls: { instructions: false, profileSwitcher: false }, // Hide UI controls
-          flyTo: false, // Prevent map from flying to route
+          controls: { instructions: false, profileSwitcher: false },
+          flyTo: false,
         });
 
         mapRef.current.addControl(directions, "top-left");
@@ -136,7 +150,7 @@ const StoreDetailsPage = () => {
     try {
       const { data, error } = await supabase
         .from("products")
-        .select(`id, name, price, stock_quantity, image_url`)
+        .select(`id, name, price, stock_quantity, image_url, currency, currency_symbol`)
         .eq("store_id", storeId)
         .eq("is_active", true)
         .neq("id", productId);
@@ -163,6 +177,23 @@ const StoreDetailsPage = () => {
       return;
     }
     navigate(`/route?lat=${store.latitude}&lng=${store.longitude}`);
+  };
+
+  const handleAddToCart = () => {
+    if (selectedProduct && store) {
+      addToCart({
+        productId: selectedProduct.id,
+        productName: selectedProduct.name,
+        productPrice: selectedProduct.price,
+        productImageUrl: selectedProduct.image_url,
+        storeId: store.id,
+        storeName: store.store_name,
+        currency: selectedProduct.currency || 'USD',
+        currency_symbol: selectedProduct.currency_symbol || '$',
+      });
+    } else {
+      toast.error("Cannot add product to list. Product or store details missing.");
+    }
   };
 
   if (loading) {
@@ -195,9 +226,8 @@ const StoreDetailsPage = () => {
               }
             }}
           >
-            {userLocation && <Marker longitude={userLocation.lng} latitude={userLocation.lat} color="#4285F4" />}
-            <Marker longitude={store.longitude} latitude={store.latitude} />
-            {/* The MapboxDirections plugin will draw the route line, so we remove the custom Source/Layer */}
+            {userLocation && <Marker longitude={userLocation.lng} latitude={userLocation.lat} anchor="bottom"><img src={NavIcon} alt="User Location" className="h-10 w-10" /></Marker>}
+            <Marker longitude={store.longitude} latitude={store.latitude} anchor="bottom"><img src={StoreIcon} alt="Store Location" className="h-10 w-10" /></Marker>
           </Map>
         </div>
 
@@ -208,10 +238,15 @@ const StoreDetailsPage = () => {
               <img src={selectedProduct.image_url || "/placeholder.svg"} alt={selectedProduct.name} className="w-full md:w-1/3 h-64 object-cover rounded-lg" />
               <div className="flex-grow">
                 <h2 className="text-3xl font-bold">{selectedProduct.name}</h2>
-                <p className="text-2xl font-bold text-green-600 my-2">${selectedProduct.price.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-green-600 my-2">
+                  {selectedProduct.currency_symbol}{selectedProduct.price.toFixed(2)}
+                </p>
                 <p className={`text-lg font-semibold ${selectedProduct.stock_quantity > 0 ? "text-green-500" : "text-red-500"}`}>
                   {selectedProduct.stock_quantity > 0 ? "In Stock" : "Out of Stock"}
                 </p>
+                <Button onClick={handleAddToCart} className="mt-4" disabled={selectedProduct.stock_quantity <= 0}>
+                  <ShoppingCart className="mr-2 h-4 w-4" /> Add to Shopping List
+                </Button>
               </div>
             </div>
           </CardContent>
@@ -239,10 +274,24 @@ const StoreDetailsPage = () => {
                   <div key={product.id} className="border rounded-lg p-4 flex flex-col">
                     <img src={product.image_url || "/placeholder.svg"} alt={product.name} className="w-full h-40 object-cover rounded-md mb-4" />
                     <h3 className="font-semibold text-lg flex-grow">{product.name}</h3>
-                    <p className="text-md font-bold text-green-600">${product.price.toFixed(2)}</p>
+                    <p className="text-md font-bold text-green-600">
+                      {product.currency_symbol}{product.price.toFixed(2)}
+                    </p>
                     <p className={`text-sm ${product.stock_quantity > 0 ? "text-green-500" : "text-red-500"}`}>
                       {product.stock_quantity > 0 ? "In Stock" : "Out of Stock"}
                     </p>
+                    <Button onClick={() => addToCart({
+                      productId: product.id,
+                      productName: product.name,
+                      productPrice: product.price,
+                      productImageUrl: product.image_url,
+                      storeId: store.id,
+                      storeName: store.store_name,
+                      currency: product.currency || 'USD',
+                      currency_symbol: product.currency_symbol || '$',
+                    })} className="mt-2" disabled={product.stock_quantity <= 0}>
+                      <ShoppingCart className="mr-2 h-4 w-4" /> Add
+                    </Button>
                   </div>
                 ))}
               </div>
