@@ -255,7 +255,7 @@ const SearchResultsPage = () => {
         // Add to favorites
         const { error } = await supabase
           .from('favorites')
-          .insert({ user_id: user.id, product_id: product.productId });
+          .insert({ user_id: user.id, product_id: product.productId, store_id: product.storeId }); // Include store_id
         
         if (error) throw error;
         toast.success(`${product.productName} added to favorites!`);
