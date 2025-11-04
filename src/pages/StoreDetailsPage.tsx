@@ -80,8 +80,6 @@ const StoreDetailsPage = () => {
   const [routeGeoJson, setRouteGeoJson] = useState<Feature<Geometry, GeoJsonProperties> | null>(null);
   
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [showMoreButton, setShowMoreButton] = useState(true);
 
   const mapRef = useRef<mapboxgl.Map | null>(null);
 
@@ -101,26 +99,60 @@ const StoreDetailsPage = () => {
     }
 
     const fetchInitialDetails = async () => {
-      if (!storeId || !productId) {
-        toast.error("Store or Product ID is missing.");
+      if (!storeId) {
+        toast.error("Store ID is missing.");
         setLoading(false);
         return;
       }
       setLoading(true);
       try {
-        const storePromise = supabase.from("stores").select(`id, store_name, address, latitude, longitude`).eq("id", storeId).single();
-        const productPromise = supabase.from("products").select(`id, name, price, stock_quantity, image_url, currency, currency_symbol`).eq("id", productId).single();
-        
-        const [{ data: storeData, error: storeError }, { data: productData, error: productError }] = await Promise.all([storePromise, productPromise]);
+        const { data: storeData, error: storeError } = await supabase
+          .from("stores")
+          .select(`id, store_name, address, latitude, longitude`)
+          .eq("id", storeId)
+          .single();
 
         if (storeError) throw storeError;
-        if (productError) throw productError;
-
         setStore(storeData);
-        setSelectedProduct(productData);
+        addViewedStore(storeId); // Record the viewed store
 
-        // Record the viewed store
-        addViewedStore(storeId);
+        let productToSelect: Product | null = null;
+        let otherProductsList: Product[] = [];
+
+        if (productId) {
+          // If a specific product ID is provided, fetch it
+          const { data: productData, error: productError } = await supabase
+            .from("products")
+            .select(`id, name, price, stock_quantity, image_url, currency, currency_symbol`)
+            .eq("id", productId)
+            .single();
+          if (productError) console.warn("Specific product not found, fetching all products for store instead.", productError);
+          else productToSelect = productData;
+        }
+
+        // Fetch all active products for the store
+        const { data: allProductsData, error: allProductsError } = await supabase
+          .from("products")
+          .select(`id, name, price, stock_quantity, image_url, currency, currency_symbol`)
+          .eq("store_id", storeId)
+          .eq("is_active", true);
+
+        if (allProductsError) throw allProductsError;
+
+        if (!productToSelect && allProductsData && allProductsData.length > 0) {
+          // If no specific product was found or provided, select the first active product
+          productToSelect = allProductsData[0];
+          otherProductsList = allProductsData.slice(1);
+        } else if (productToSelect) {
+          // If a specific product was found, filter it out from otherProductsList
+          otherProductsList = allProductsData.filter(p => p.id !== productToSelect?.id);
+        } else {
+          // No products found at all
+          otherProductsList = [];
+        }
+        
+        setSelectedProduct(productToSelect);
+        setOtherProducts(otherProductsList);
 
       } catch (error) {
         console.error("Error fetching initial details:", error);
@@ -179,29 +211,6 @@ const StoreDetailsPage = () => {
   }, [userLocation, store]);
 
 
-  const handleFetchMoreProducts = async () => {
-    if (!storeId || !productId) return;
-    setLoadingMore(true);
-    try {
-      const { data, error } = await supabase
-        .from("products")
-        .select(`id, name, price, stock_quantity, image_url, currency, currency_symbol`)
-        .eq("store_id", storeId)
-        .eq("is_active", true)
-        .neq("id", productId);
-
-      if (error) throw error;
-      
-      setOtherProducts(data || []);
-      setShowMoreButton(false);
-    } catch (error) {
-      console.error("Error fetching more products:", error);
-      toast.error("Failed to load more products.");
-    } finally {
-      setLoadingMore(false);
-    }
-  };
-
   const handleWalkToStore = () => {
     if (!store) {
       toast.error("Store location is not available.");
@@ -223,7 +232,7 @@ const StoreDetailsPage = () => {
     );
   }
 
-  if (!store || !selectedProduct) return <div className="text-center p-8">Could not load store or product details.</div>;
+  if (!store) return <div className="text-center p-8">Could not load store details.</div>;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -270,31 +279,27 @@ const StoreDetailsPage = () => {
           </Map>
         </div>
 
-        <Card>
-          <CardHeader><CardTitle>Selected Product</CardTitle></CardHeader>
-          <CardContent>
-            <div className="flex flex-col md:flex-row items-center gap-6">
-              <img src={selectedProduct.image_url || "/placeholder.svg"} alt={selectedProduct.name} className="w-full md:w-1/3 h-64 object-cover rounded-lg" />
-              <div className="flex-grow">
-                <h2 className="text-3xl font-bold">{selectedProduct.name}</h2>
-                <p className="text-2xl font-bold text-green-600 my-2">
-                  {selectedProduct.currency_symbol}{selectedProduct.price.toFixed(2)}
-                </p>
-                <p className={`text-lg font-semibold ${selectedProduct.stock_quantity > 0 ? "text-green-500" : "text-red-500"}`}>
-                  {selectedProduct.stock_quantity > 0 ? "In Stock" : "Out of Stock"}
-                </p>
+        {selectedProduct && (
+          <Card>
+            <CardHeader><CardTitle>Selected Product</CardTitle></CardHeader>
+            <CardContent>
+              <div className="flex flex-col md:flex-row items-center gap-6">
+                <img src={selectedProduct.image_url || "/placeholder.svg"} alt={selectedProduct.name} className="w-full md:w-1/3 h-64 object-cover rounded-lg" />
+                <div className="flex-grow">
+                  <h2 className="text-3xl font-bold">{selectedProduct.name}</h2>
+                  <p className="text-2xl font-bold text-green-600 my-2">
+                    {selectedProduct.currency_symbol}{selectedProduct.price.toFixed(2)}
+                  </p>
+                  <p className={`text-lg font-semibold ${selectedProduct.stock_quantity > 0 ? "text-green-500" : "text-red-500"}`}>
+                    {selectedProduct.stock_quantity > 0 ? "In Stock" : "Out of Stock"}
+                  </p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="flex justify-center items-center gap-4">
-            {showMoreButton && (
-            <Button size="lg" onClick={handleFetchMoreProducts} disabled={loadingMore}>
-                {loadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                More products in this store
-            </Button>
-            )}
             <Button size="lg" variant="outline" onClick={handleWalkToStore} disabled={!userLocation}>
                 <Footprints className="mr-2 h-4 w-4" />
                 Walk to Store
