@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import type { Feature, GeoJsonProperties, Geometry } from "geojson";
 import StoreIcon from "@/assets/store.svg";
 import NavIcon from "@/assets/nav.svg";
-import mapboxgl, { LinePaint } from "mapbox-gl";
+import { LinePaint } from "mapbox-gl"; // Only import LinePaint if needed, not mapboxgl itself
 import { formatDistance } from "@/lib/utils";
 
 const containerStyle = {

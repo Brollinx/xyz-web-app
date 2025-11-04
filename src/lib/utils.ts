@@ -26,3 +26,11 @@ export function calculateDistance(
   const distance = R * c;
   return parseFloat(distance.toFixed(1)); // Round to 1 decimal place
 }
+
+export function formatDistance(meters: number): string {
+  if (meters < 1000) {
+    return `${Math.round(meters)} m`;
+  } else {
+    return `${(meters / 1000).toFixed(1)} km`;
+  }
+}

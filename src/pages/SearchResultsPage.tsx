@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { calculateDistance, formatDistance, cn } from "@/lib/utils";
 import StoreIcon from "@/assets/store.svg";
-import { useHighPrecisionGeolocation } from "@/hooks/useHighPrecisionGeolocation";
+import { useHighPrecisionGeolocation } from "@/hooks/useHighPrecisionGeolocation"; // Re-confirming the import path
 
 const defaultCenter = {
   latitude: 6.5244, // Lagos, Nigeria latitude

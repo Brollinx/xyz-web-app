@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 
-interface CartItem {
+export interface CartItem { // Exported CartItem
   productId: string;
   productName: string;
   productPrice: number;

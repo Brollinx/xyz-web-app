@@ -1,5 +1,5 @@
 declare module '@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions' {
-  import { Map, ControlPosition } from 'mapbox-gl';
+  import { Map, ControlPosition, IControl } from 'mapbox-gl';
 
   interface MapboxDirectionsOptions {
     accessToken: string;
@@ -24,7 +24,7 @@ declare module '@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions' {
     container?: string | HTMLElement;
   }
 
-  class MapboxDirections {
+  class MapboxDirections implements IControl { // Implement IControl
     constructor(options: MapboxDirectionsOptions);
     on(event: string, callback: (...args: any[]) => void): this;
     setOrigin(coordinates: [number, number]): this;
@@ -32,7 +32,10 @@ declare module '@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions' {
     removeRoutes(): this;
     addControl(map: Map, position?: ControlPosition): void;
     removeControl(map: Map): void;
-    // Add other methods as needed
+
+    // IControl methods
+    onAdd(map: Map): HTMLElement;
+    onRemove(map: Map): void;
   }
 
   export default MapboxDirections;
