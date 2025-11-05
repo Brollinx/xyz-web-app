@@ -1,9 +1,14 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import SearchBar from "@/components/SearchBar"; // Corrected import
-import SearchFilterModal from "@/components/SearchFilterModal"; // Import the SearchFilterModal
+import SearchBar from "@/components/SearchBar";
+import SearchFilterModal from "@/components/SearchFilterModal";
+import RecommendedProductsSection from "@/components/RecommendedProductsSection"; // Import new component
+import { useHighPrecisionGeolocation } from "@/hooks/useHighPrecisionGeolocation"; // Import geolocation hook
+import { addSearchTerm, getRecentSearchTerms, clearSearchHistory } from "@/utils/searchHistory"; // Import search history utilities
 import Logo from "@/assets/Logo.png"; // Import the logo as PNG
+import { toast } from "sonner";
+import { Trash2 } from "lucide-react"; // Import Trash2 icon
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -11,6 +16,14 @@ const LandingPage = () => {
   const [currentProximityFilter, setCurrentProximityFilter] = useState<number | null>(null);
   const [currentMinPriceFilter, setCurrentMinPriceFilter] = useState<number | null>(null);
   const [currentMaxPriceFilter, setCurrentMaxPriceFilter] = useState<number | null>(null);
+  const [recentSearchTerms, setRecentSearchTerms] = useState<string[]>([]);
+
+  const { userLocation, loading: loadingLocation, locationStatus } = useHighPrecisionGeolocation();
+
+  // Load recent search terms on component mount
+  useEffect(() => {
+    setRecentSearchTerms(getRecentSearchTerms());
+  }, []);
 
   // Determine if any filter is active for visual highlighting
   const isFilterActive = useMemo(() => {
@@ -25,6 +38,8 @@ const LandingPage = () => {
 
   const handleSearch = useCallback((query: string) => {
     if (query.trim()) {
+      addSearchTerm(query.trim()); // Save search term
+      setRecentSearchTerms(getRecentSearchTerms()); // Update recent searches state
       const params = new URLSearchParams();
       params.set("query", query.trim());
       if (currentProximityFilter !== null) params.set("proximity", String(currentProximityFilter));
@@ -33,6 +48,12 @@ const LandingPage = () => {
       navigate(`/search-results?${params.toString()}`);
     }
   }, [navigate, currentProximityFilter, currentMinPriceFilter, currentMaxPriceFilter]);
+
+  const handleClearSearchHistory = useCallback(() => {
+    clearSearchHistory();
+    setRecentSearchTerms([]);
+    toast.info("Search history cleared!");
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-y-8 bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
@@ -50,6 +71,13 @@ const LandingPage = () => {
           placeholder="Search for products..."
         />
       </div>
+
+      {/* Recommended Products Section */}
+      <RecommendedProductsSection
+        userLocation={userLocation}
+        proximityFilter={currentProximityFilter}
+        recentSearchTerms={recentSearchTerms}
+      />
 
       {/* Bottom: Three evenly spaced buttons */}
       <div className="w-full max-w-md flex justify-around space-x-4 pb-8">
@@ -75,6 +103,16 @@ const LandingPage = () => {
           Login
         </Button>
       </div>
+
+      {recentSearchTerms.length > 0 && (
+        <Button
+          variant="outline"
+          className="mt-4"
+          onClick={handleClearSearchHistory}
+        >
+          <Trash2 className="mr-2 h-4 w-4" /> Clear Search History
+        </Button>
+      )}
 
       <SearchFilterModal
         isOpen={isFilterModalOpen}

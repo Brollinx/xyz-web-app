@@ -16,6 +16,7 @@ import { useHighPrecisionGeolocation } from "@/hooks/useHighPrecisionGeolocation
 import { useFavorites } from "@/hooks/use-favorites";
 import SearchFilterModal from "@/components/SearchFilterModal";
 import SearchBar from "@/components/SearchBar"; // Import the new SearchBar component
+import { addSearchTerm } from "@/utils/searchHistory"; // Import addSearchTerm
 
 const defaultCenter = {
   latitude: 6.5244, // Lagos, Nigeria latitude
@@ -277,20 +278,11 @@ const SearchResultsPage = () => {
     setCurrentProximityFilter(proximity);
     setCurrentMinPriceFilter(minPrice);
     setCurrentMaxPriceFilter(maxPrice);
-
-    // Update URL parameters
-    const newSearchParams = new URLSearchParams(searchParams);
-    if (proximity !== null) newSearchParams.set("proximity", String(proximity));
-    else newSearchParams.delete("proximity");
-    if (minPrice !== null) newSearchParams.set("minPrice", String(minPrice));
-    else newSearchParams.delete("minPrice");
-    if (maxPrice !== null) newSearchParams.set("maxPrice", String(maxPrice));
-    else newSearchParams.delete("maxPrice");
-    setSearchParams(newSearchParams, { replace: true });
-  }, [searchParams, setSearchParams]);
+  }, []);
 
   const handleSearch = useCallback((query: string) => {
     setCurrentSearchQuery(query);
+    addSearchTerm(query.trim()); // Save search term
     const newSearchParams = new URLSearchParams(searchParams);
     newSearchParams.set("query", query);
     setSearchParams(newSearchParams);
