@@ -3,16 +3,26 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Loader2, Trash2, HeartOff } from "lucide-react"; // Import Trash2 and HeartOff icons
+import { Loader2, Trash2, HeartOff } from "lucide-react";
 import { toast } from "sonner";
-import { useFavorites } from "@/hooks/use-favorites"; // Import useFavorites hook
+import { useFavorites } from "@/hooks/use-favorites";
 
 const FavoritesPage = () => {
   const navigate = useNavigate();
   const { favorites, loading, userId, removeFavorite, clearAllFavorites } = useFavorites();
 
-  const totalFavoritesPrice = useMemo(() => {
-    return favorites.reduce((sum, item) => sum + Number(item.price), 0);
+  // Group favorites by currency and calculate total for each currency
+  const totalsByCurrency = useMemo(() => {
+    const totals: { [currency: string]: { sum: number; symbol: string } } = {};
+    favorites.forEach(item => {
+      const currency = item.currency || 'USD'; // Default to USD if not specified
+      const currency_symbol = item.currency_symbol || '$'; // Default to $ if not specified
+      if (!totals[currency]) {
+        totals[currency] = { sum: 0, symbol: currency_symbol };
+      }
+      totals[currency].sum += Number(item.price);
+    });
+    return totals;
   }, [favorites]);
 
   if (loading) {
@@ -23,9 +33,6 @@ const FavoritesPage = () => {
       </div>
     );
   }
-
-  // Removed the if (!userId) block to allow guest users to view their favorites.
-  // The useFavorites hook now handles loading from localStorage for guests.
 
   return (
     <div className="min-h-screen flex flex-col items-center bg-gray-50 p-4">
@@ -86,9 +93,13 @@ const FavoritesPage = () => {
         </Card>
 
         {favorites.length > 0 && (
-          <Card className="mt-4 p-4 flex justify-between items-center">
-            <h3 className="text-xl font-bold">Total Price: ${totalFavoritesPrice.toFixed(2)}</h3>
-            <Button variant="destructive" onClick={clearAllFavorites}>
+          <Card className="mt-4 p-4 flex flex-col gap-2">
+            {Object.entries(totalsByCurrency).map(([currency, { sum, symbol }]) => (
+              <h3 key={currency} className="text-xl font-bold">
+                Total Price ({currency}): {symbol}{sum.toFixed(2)}
+              </h3>
+            ))}
+            <Button variant="destructive" onClick={clearAllFavorites} className="mt-2">
               <Trash2 className="mr-2 h-4 w-4" /> Clear All Favorites
             </Button>
           </Card>
