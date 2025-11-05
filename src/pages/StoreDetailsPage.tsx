@@ -6,13 +6,14 @@ import mapboxgl, { LinePaint } from "mapbox-gl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input"; // Import Input component
-import { Loader2, Footprints, Search } from "lucide-react"; // Import Search icon
+import { Loader2, Footprints, Search, Heart } from "lucide-react"; // Import Search and Heart icon
 import { MAPBOX_TOKEN } from "@/config";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import type { Feature, GeoJsonProperties, Geometry } from "geojson";
 import StoreIcon from "@/assets/store.svg";
 import { addViewedStore } from "@/utils/viewedItems";
+import { useFavorites } from "@/hooks/use-favorites"; // Import useFavorites hook
 
 const containerStyle = {
   width: "100%",
@@ -81,6 +82,8 @@ const StoreDetailsPage = () => {
   const [routeGeoJson, setRouteGeoJson] = useState<Feature<Geometry, GeoJsonProperties> | null>(null);
   
   const [loading, setLoading] = useState(true);
+
+  const { isFavorited, addFavorite, removeFavorite, userId } = useFavorites(); // Use the favorites hook
 
   const mapRef = useRef<mapboxgl.Map | null>(null);
 
@@ -212,6 +215,31 @@ const StoreDetailsPage = () => {
     navigate(`/route?lat=${store.latitude}&lng=${store.longitude}`);
   };
 
+  const handleToggleFavorite = (e: React.MouseEvent, product: Product) => {
+    e.stopPropagation(); // Prevent navigating to store details
+    if (!userId) {
+      toast.error("Please log in to add products to favorites.");
+      return;
+    }
+
+    if (isFavorited(product.id)) {
+      removeFavorite(product.id);
+    } else {
+      if (!store) {
+        toast.error("Store information is missing for this product.");
+        return;
+      }
+      addFavorite({
+        product_id: product.id,
+        store_id: store.id,
+        product_name: product.name,
+        price: product.price,
+        image_url: product.image_url,
+        store_name: store.store_name,
+      });
+    }
+  };
+
   // Filter products based on search query
   const filteredProducts = useMemo(() => {
     const productsToFilter = allStoreProducts.filter(p => p.id !== selectedProduct?.id);
@@ -294,6 +322,16 @@ const StoreDetailsPage = () => {
                   <p className={`text-lg font-semibold ${selectedProduct.stock_quantity > 0 ? "text-green-500" : "text-red-500"}`}>
                     {selectedProduct.stock_quantity > 0 ? "In Stock" : "Out of Stock"}
                   </p>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => handleToggleFavorite(e, selectedProduct)}
+                    className="mt-4"
+                  >
+                    <Heart
+                      className={`h-8 w-8 ${isFavorited(selectedProduct.id) ? "text-red-500 fill-red-500" : "text-gray-400"}`}
+                    />
+                  </Button>
                 </div>
               </div>
             </CardContent>
@@ -337,6 +375,16 @@ const StoreDetailsPage = () => {
                       <p className={`text-sm ${product.stock_quantity > 0 ? "text-green-500" : "text-red-500"}`}>
                         {product.stock_quantity > 0 ? "In Stock" : "Out of Stock"}
                       </p>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => handleToggleFavorite(e, product)}
+                        className="mt-2 self-end"
+                      >
+                        <Heart
+                          className={`h-6 w-6 ${isFavorited(product.id) ? "text-red-500 fill-red-500" : "text-gray-400"}`}
+                        />
+                      </Button>
                     </div>
                   ))
                 ) : (

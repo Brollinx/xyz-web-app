@@ -6,13 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, Loader2, RefreshCw } from "lucide-react"; // Added RefreshCw icon
+import { Search, MapPin, Loader2, RefreshCw, Heart } from "lucide-react"; // Added Heart icon
 import { MAPBOX_TOKEN } from "@/config";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { calculateDistance, formatDistance, cn } from "@/lib/utils";
 import StoreIcon from "@/assets/store.svg";
-import { useHighPrecisionGeolocation } from "@/hooks/useHighPrecisionGeolocation"; // Import the new hook
+import { useHighPrecisionGeolocation } from "@/hooks/useHighPrecisionGeolocation";
+import { useFavorites } from "@/hooks/use-favorites"; // Import useFavorites hook
 
 const defaultCenter = {
   latitude: 6.5244, // Lagos, Nigeria latitude
@@ -65,7 +66,8 @@ const SearchResultsPage = () => {
   const [selectedProductResult, setSelectedProductResult] = useState<ProductWithStoreInfo | null>(null);
   const [productResults, setProductResults] = useState<ProductWithStoreInfo[]>([]);
 
-  const { userLocation, loading: loadingLocation, locationStatus, refreshLocation } = useHighPrecisionGeolocation(); // Use the new hook
+  const { userLocation, loading: loadingLocation, locationStatus, refreshLocation } = useHighPrecisionGeolocation();
+  const { isFavorited, addFavorite, removeFavorite, userId } = useFavorites(); // Use the favorites hook
 
   const mapRef = useRef<mapboxgl.Map | null>(null);
 
@@ -197,6 +199,27 @@ const SearchResultsPage = () => {
   const handleMapIconClick = (e: React.MouseEvent, productResult: ProductWithStoreInfo) => {
     e.stopPropagation();
     handleMarkerClick(productResult);
+  };
+
+  const handleToggleFavorite = (e: React.MouseEvent, product: ProductWithStoreInfo) => {
+    e.stopPropagation(); // Prevent navigating to store details
+    if (!userId) {
+      toast.error("Please log in to add products to favorites.");
+      return;
+    }
+
+    if (isFavorited(product.productId)) {
+      removeFavorite(product.productId);
+    } else {
+      addFavorite({
+        product_id: product.productId,
+        store_id: product.storeId,
+        product_name: product.productName,
+        price: product.productPrice,
+        image_url: product.productImageUrl,
+        store_name: product.storeName,
+      });
+    }
   };
 
   const uniqueStoresForMarkers = useMemo(() => {
@@ -347,9 +370,22 @@ const SearchResultsPage = () => {
                           )}
                         </div>
                       </div>
-                      <div className="pl-2">
+                      <div className="flex flex-col items-end pl-2">
                         <Button variant="ghost" size="icon" onClick={(e) => handleMapIconClick(e, result)}>
                           <MapPin className="h-6 w-6 text-blue-600" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => handleToggleFavorite(e, result)}
+                          className="mt-2"
+                        >
+                          <Heart
+                            className={cn(
+                              "h-6 w-6",
+                              isFavorited(result.productId) ? "text-red-500 fill-red-500" : "text-gray-400"
+                            )}
+                          />
                         </Button>
                       </div>
                     </div>

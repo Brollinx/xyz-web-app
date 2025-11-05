@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Home, ChevronLeft } from "lucide-react";
+import { Home, ChevronLeft, Heart } from "lucide-react"; // Import Heart icon
+import { supabase } from "@/lib/supabase"; // Import supabase client
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -10,6 +11,23 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setIsLoggedIn(!!user);
+    };
+    checkUser();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session?.user);
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
 
   const showBackButton = location.pathname !== "/";
   const showHomeButton = location.pathname !== "/"; // Hide Home button on the root path
@@ -23,7 +41,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <ChevronLeft className="h-5 w-5" />
             </Button>
           )}
-          {showHomeButton && ( // Conditionally render the Home button
+          {showHomeButton && (
             <Link to="/">
               <Button variant="ghost" className="text-primary-foreground hover:bg-primary/80">
                 <Home className="h-5 w-5 mr-2" /> Home
@@ -31,7 +49,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </Link>
           )}
         </div>
-        {/* You can add more navigation items or a logo here if needed */}
+        {isLoggedIn && ( // Conditionally render Favorites link if logged in
+          <Link to="/favorites">
+            <Button variant="ghost" className="text-primary-foreground hover:bg-primary/80">
+              <Heart className="h-5 w-5 mr-2" /> Favorites
+            </Button>
+          </Link>
+        )}
       </header>
       <main className="flex-grow flex flex-col">
         {children}
