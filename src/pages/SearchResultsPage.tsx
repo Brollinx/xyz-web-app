@@ -13,7 +13,7 @@ import { supabase } from "@/lib/supabase";
 import { calculateDistance, formatDistance, cn } from "@/lib/utils";
 import StoreIcon from "@/assets/store.svg";
 import { useHighPrecisionGeolocation } from "@/hooks/useHighPrecisionGeolocation";
-import { useFavorites } from "@/hooks/use-favorites"; // Updated import path
+import { useFavorites } from "@/hooks/use-favorites";
 import SearchFilterModal from "@/components/SearchFilterModal";
 
 const defaultCenter = {
@@ -262,7 +262,7 @@ const SearchResultsPage = () => {
     setCurrentProximityFilter(proximity);
     setCurrentMinPriceFilter(minPrice);
     setCurrentMaxPriceFilter(maxPrice);
-    setIsFilterModalOpen(false); // Close modal after applying
+    // Removed: setIsFilterModalOpen(false); // This line was causing the modal to close prematurely
   }, []);
 
   const uniqueStoresForMarkers = useMemo(() => {

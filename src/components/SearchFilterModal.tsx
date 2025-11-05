@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { useFavorites } from "@/hooks/use-favorites"; // Updated import path
+import { useFavorites } from "@/hooks/use-favorites";
 import { Loader2 } from "lucide-react";
 
 interface SearchFilterModalProps {
@@ -94,8 +94,7 @@ const SearchFilterModal: React.FC<SearchFilterModalProps> = ({ isOpen, onClose, 
       setMinPrice(priceMin);
       setMaxPrice(maxPrice);
       setLoading(false);
-      // Apply filters immediately after loading
-      onApplyFilters(proximity, priceMin ? parseFloat(priceMin) : null, priceMax ? parseFloat(priceMax) : null);
+      // Removed: onApplyFilters(proximity, priceMin ? parseFloat(priceMin) : null, priceMax ? parseFloat(priceMax) : null);
     };
 
     if (isOpen) {
@@ -161,13 +160,13 @@ const SearchFilterModal: React.FC<SearchFilterModalProps> = ({ isOpen, onClose, 
         return;
       }
       saveFilters(selectedProximity, minPrice, maxPrice);
-      onApplyFilters(selectedProximity, parsedMinPrice, parsedMaxPrice);
+      // Removed: onApplyFilters(selectedProximity, parsedMinPrice, parsedMaxPrice);
     }, 500);
 
     return () => {
       clearTimeout(handler);
     };
-  }, [selectedProximity, minPrice, maxPrice, saveFilters, onApplyFilters]);
+  }, [selectedProximity, minPrice, maxPrice, saveFilters]);
 
 
   return (
