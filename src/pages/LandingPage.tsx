@@ -46,14 +46,14 @@ const LandingPage = () => {
           className="flex-1 text-lg py-6 rounded-lg hover:bg-blue-100 transition-colors"
           onClick={() => navigate("/nearby-stores")}
         >
-          Nearby Stores
+          Nearby
         </Button>
         <Button
           variant="ghost"
           className="flex-1 text-lg py-6 rounded-lg hover:bg-blue-100 transition-colors"
           onClick={() => navigate("/featured-products")}
         >
-          Featured Products
+          Featured
         </Button>
         <Button
           variant="ghost"
