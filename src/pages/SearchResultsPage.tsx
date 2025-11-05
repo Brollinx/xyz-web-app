@@ -60,19 +60,28 @@ const getBoundsForPoints = (points: { lat: number; lng: number }[]) => {
 };
 
 const SearchResultsPage = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams(); // Use setSearchParams
   const navigate = useNavigate();
   const initialSearchQuery = searchParams.get("query") || "";
-  const [currentSearchQuery, setCurrentSearchQuery] = useState(initialSearchQuery); // Renamed to avoid conflict with SearchBar's internal state
+  const [currentSearchQuery, setCurrentSearchQuery] = useState(initialSearchQuery);
   const [viewState, setViewState] = useState<Partial<ViewState>>(defaultCenter);
   const [selectedProductResult, setSelectedProductResult] = useState<ProductWithStoreInfo | null>(null);
   const [allProducts, setAllProducts] = useState<ProductWithStoreInfo[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<ProductWithStoreInfo[]>([]);
 
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  const [currentProximityFilter, setCurrentProximityFilter] = useState<number | null>(null);
-  const [currentMinPriceFilter, setCurrentMinPriceFilter] = useState<number | null>(null);
-  const [currentMaxPriceFilter, setCurrentMaxPriceFilter] = useState<number | null>(null);
+  const [currentProximityFilter, setCurrentProximityFilter] = useState<number | null>(() => {
+    const param = searchParams.get("proximity");
+    return param ? parseInt(param) : null;
+  });
+  const [currentMinPriceFilter, setCurrentMinPriceFilter] = useState<number | null>(() => {
+    const param = searchParams.get("minPrice");
+    return param ? parseFloat(param) : null;
+  });
+  const [currentMaxPriceFilter, setCurrentMaxPriceFilter] = useState<number | null>(() => {
+    const param = searchParams.get("maxPrice");
+    return param ? parseFloat(param) : null;
+  });
 
   const { userLocation, loading: loadingLocation, locationStatus, refreshLocation } = useHighPrecisionGeolocation();
   const { isFavorited, addFavorite, removeFavorite, userId } = useFavorites();
@@ -105,7 +114,7 @@ const SearchResultsPage = () => {
           `)
           .eq('is_active', true);
 
-        if (currentSearchQuery) { // Use currentSearchQuery here
+        if (currentSearchQuery) {
           query = query.ilike('name', `%${currentSearchQuery}%`);
         }
 
@@ -147,7 +156,7 @@ const SearchResultsPage = () => {
     };
 
     fetchAllProducts();
-  }, [currentSearchQuery]); // Depend on currentSearchQuery
+  }, [currentSearchQuery]);
 
   // Apply filters to allProducts to get filteredProducts
   useEffect(() => {
@@ -268,12 +277,24 @@ const SearchResultsPage = () => {
     setCurrentProximityFilter(proximity);
     setCurrentMinPriceFilter(minPrice);
     setCurrentMaxPriceFilter(maxPrice);
-  }, []);
+
+    // Update URL parameters
+    const newSearchParams = new URLSearchParams(searchParams);
+    if (proximity !== null) newSearchParams.set("proximity", String(proximity));
+    else newSearchParams.delete("proximity");
+    if (minPrice !== null) newSearchParams.set("minPrice", String(minPrice));
+    else newSearchParams.delete("minPrice");
+    if (maxPrice !== null) newSearchParams.set("maxPrice", String(maxPrice));
+    else newSearchParams.delete("maxPrice");
+    setSearchParams(newSearchParams, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const handleSearch = useCallback((query: string) => {
     setCurrentSearchQuery(query);
-    navigate(`/search-results?query=${encodeURIComponent(query)}`);
-  }, [navigate]);
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.set("query", query);
+    setSearchParams(newSearchParams);
+  }, [searchParams, setSearchParams]);
 
   const uniqueStoresForMarkers = useMemo(() => {
     const seenStoreIds = new Set<string>();

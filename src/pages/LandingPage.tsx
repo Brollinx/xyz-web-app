@@ -1,20 +1,38 @@
+import React, { useState, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Link, useNavigate } from "react-router-dom";
-import { Search } from "lucide-react";
-import React, { useState } from "react";
+import SearchBar from "@/components/SearchBar"; // Corrected import
+import SearchFilterModal from "@/components/SearchFilterModal"; // Import the SearchFilterModal
 import Logo from "@/assets/Logo.png"; // Import the logo as PNG
 
 const LandingPage = () => {
-  const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [currentProximityFilter, setCurrentProximityFilter] = useState<number | null>(null);
+  const [currentMinPriceFilter, setCurrentMinPriceFilter] = useState<number | null>(null);
+  const [currentMaxPriceFilter, setCurrentMaxPriceFilter] = useState<number | null>(null);
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/search-results?query=${encodeURIComponent(searchQuery)}`);
+  // Determine if any filter is active for visual highlighting
+  const isFilterActive = useMemo(() => {
+    return currentProximityFilter !== null || currentMinPriceFilter !== null || currentMaxPriceFilter !== null;
+  }, [currentProximityFilter, currentMinPriceFilter, currentMaxPriceFilter]);
+
+  const handleApplyFilters = useCallback((proximity: number | null, minPrice: number | null, maxPrice: number | null) => {
+    setCurrentProximityFilter(proximity);
+    setCurrentMinPriceFilter(minPrice);
+    setCurrentMaxPriceFilter(maxPrice);
+  }, []);
+
+  const handleSearch = useCallback((query: string) => {
+    if (query.trim()) {
+      const params = new URLSearchParams();
+      params.set("query", query.trim());
+      if (currentProximityFilter !== null) params.set("proximity", String(currentProximityFilter));
+      if (currentMinPriceFilter !== null) params.set("minPrice", String(currentMinPriceFilter));
+      if (currentMaxPriceFilter !== null) params.set("maxPrice", String(currentMaxPriceFilter));
+      navigate(`/search-results?${params.toString()}`);
     }
-  };
+  }, [navigate, currentProximityFilter, currentMinPriceFilter, currentMaxPriceFilter]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-y-8 bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
@@ -23,20 +41,14 @@ const LandingPage = () => {
         <img src={Logo} alt="Company Logo" className="h-24 w-24 object-contain" />
       </div>
 
-      {/* Middle: Google-like Search Bar */}
+      {/* Middle: Google-like Search Bar with integrated filter */}
       <div className="flex flex-col items-center justify-center w-full max-w-2xl px-4">
-        <form onSubmit={handleSearchSubmit} className="flex w-full items-center space-x-2">
-          <Input
-            type="text"
-            placeholder="Search for products..."
-            className="flex-grow h-12 rounded-full px-6 shadow-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <Button type="submit" size="lg" className="rounded-full h-12 px-6 shadow-md">
-            <Search className="h-5 w-5" />
-          </Button>
-        </form>
+        <SearchBar
+          onSearch={handleSearch}
+          onOpenFilters={() => setIsFilterModalOpen(true)}
+          isFilterActive={isFilterActive}
+          placeholder="Search for products..."
+        />
       </div>
 
       {/* Bottom: Three evenly spaced buttons */}
@@ -63,6 +75,12 @@ const LandingPage = () => {
           Login
         </Button>
       </div>
+
+      <SearchFilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        onApplyFilters={handleApplyFilters}
+      />
     </div>
   );
 };
