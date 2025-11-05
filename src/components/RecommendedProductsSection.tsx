@@ -10,7 +10,7 @@ import { supabase } from "@/lib/supabase";
 import { calculateDistance, formatDistance, cn } from "@/lib/utils";
 import { recommendationMapping } from "@/utils/recommendationMapping";
 import { useFavorites } from "@/hooks/use-favorites";
-import { Button } from "@/components/ui/button"; // Added missing import
+import { Button } from "@/components/ui/button";
 
 interface ProductWithStoreInfo {
   productId: string;
@@ -197,31 +197,33 @@ const RecommendedProductsSection: React.FC<RecommendedProductsSectionProps> = ({
               products.map((product) => (
                 <div
                   key={product.productId}
-                  className="w-[200px] flex-shrink-0 p-3 border rounded-md hover:bg-gray-100 cursor-pointer transition-colors flex flex-col"
+                  className="w-[180px] flex-shrink-0 p-2 border rounded-md hover:bg-gray-100 cursor-pointer transition-colors flex flex-col justify-between" // Adjusted width and padding
                   onClick={() => navigate(`/store/${product.storeId}?product=${product.productId}`)}
                 >
                   <img
                     src={product.productImageUrl || "/placeholder.svg"}
                     alt={product.productName}
-                    className="w-full h-32 object-cover rounded-md mb-3"
+                    className="w-full h-28 object-cover rounded-md mb-2" // Adjusted height
                   />
-                  <h4 className="font-semibold text-base flex-grow">{product.productName}</h4>
-                  <p className="text-sm text-gray-700">{product.storeName}</p>
-                  <p className="text-md font-bold text-green-600">
-                    {product.currency_symbol}{product.productPrice.toFixed(2)}
-                  </p>
-                  {userLocation && product.formattedDistance !== undefined && (
-                    <p className="text-xs text-gray-500">Distance: {product.formattedDistance}</p>
-                  )}
+                  <div className="flex-grow flex flex-col justify-between">
+                    <h4 className="font-semibold text-sm truncate mb-1">{product.productName}</h4> {/* Truncate product name */}
+                    <p className="text-xs text-gray-700 truncate mb-1">{product.storeName}</p> {/* Truncate store name */}
+                    <p className="text-sm font-bold text-green-600 mb-1">
+                      {product.currency_symbol}{product.productPrice.toFixed(2)}
+                    </p>
+                    {userLocation && product.formattedDistance !== undefined && (
+                      <p className="text-xs text-gray-500">{product.formattedDistance}</p>
+                    )}
+                  </div>
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={(e) => handleToggleFavorite(e, product)}
-                    className="mt-2 self-end"
+                    className="mt-2 self-end h-7 w-7" // Smaller button
                   >
                     <Heart
                       className={cn(
-                        "h-5 w-5",
+                        "h-4 w-4", // Smaller icon
                         isFavorited(product.productId) ? "text-red-500 fill-red-500" : "text-gray-400"
                       )}
                     />

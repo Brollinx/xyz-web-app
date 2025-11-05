@@ -1,14 +1,15 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { MapPin, Loader2, RefreshCw } from "lucide-react"; // Added RefreshCw icon
+import { MapPin, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { calculateDistance, formatDistance, cn } from "@/lib/utils";
 import StoreIcon from "@/assets/store.svg";
-import { useHighPrecisionGeolocation } from "@/hooks/useHighPrecisionGeolocation"; // Import the new hook
+import { useHighPrecisionGeolocation } from "@/hooks/useHighPrecisionGeolocation";
+import SearchBar from "@/components/SearchBar"; // Import SearchBar
 
 interface StoreInfo {
   id: string;
@@ -24,8 +25,9 @@ const NearbyStoresPage = () => {
   const navigate = useNavigate();
   const [stores, setStores] = useState<StoreInfo[]>([]);
   const [loadingStores, setLoadingStores] = useState(true);
+  const [storeSearchQuery, setStoreSearchQuery] = useState(""); // New state for store search
 
-  const { userLocation, loading: loadingLocation, locationStatus, refreshLocation } = useHighPrecisionGeolocation(); // Use the new hook
+  const { userLocation, loading: loadingLocation, locationStatus, refreshLocation } = useHighPrecisionGeolocation();
 
   useEffect(() => {
     const fetchStores = async () => {
@@ -66,14 +68,25 @@ const NearbyStoresPage = () => {
     };
 
     fetchStores();
-  }, [userLocation, locationStatus]); // Depend on userLocation and locationStatus from the hook
+  }, [userLocation, locationStatus]);
 
   const processedStores = useMemo(() => {
-    if (locationStatus !== "success" || !userLocation || stores.length === 0) {
-      return stores;
+    let filtered = stores;
+
+    // Apply store name search filter
+    if (storeSearchQuery) {
+      const lowerCaseQuery = storeSearchQuery.toLowerCase();
+      filtered = filtered.filter(store =>
+        store.store_name.toLowerCase().includes(lowerCaseQuery) ||
+        store.address.toLowerCase().includes(lowerCaseQuery)
+      );
     }
 
-    return stores
+    if (locationStatus !== "success" || !userLocation || filtered.length === 0) {
+      return filtered;
+    }
+
+    return filtered
       .map(store => {
         const distanceInMeters = calculateDistance(
           userLocation.lat,
@@ -89,9 +102,13 @@ const NearbyStoresPage = () => {
         };
       })
       .sort((a, b) => (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity));
-  }, [stores, userLocation, locationStatus]);
+  }, [stores, userLocation, locationStatus, storeSearchQuery]);
 
-  if (loadingStores || loadingLocation) { // Combine loading states
+  const handleStoreSearch = useCallback((query: string) => {
+    setStoreSearchQuery(query);
+  }, []);
+
+  if (loadingStores || loadingLocation) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin" />
@@ -106,6 +123,14 @@ const NearbyStoresPage = () => {
     <div className="min-h-screen flex flex-col items-center bg-gray-50 p-4">
       <div className="w-full max-w-4xl text-center space-y-6 mb-8">
         <h1 className="text-4xl font-bold text-gray-900">Nearby Stores</h1>
+        <div className="flex w-full items-center space-x-2 mx-auto">
+          <SearchBar
+            onSearch={handleStoreSearch}
+            onOpenFilters={() => { /* No filters for store search */ }}
+            isFilterActive={false} // No filters active for store search
+            placeholder="Search for a store by name or address..."
+          />
+        </div>
         <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
           {locationStatus === "denied" && (
             <p className="text-red-500">Location access denied. Please enable location services to see nearby stores.</p>
@@ -143,8 +168,8 @@ const NearbyStoresPage = () => {
                           className="h-16 w-16 object-contain rounded-md mr-4 flex-shrink-0"
                         />
                         <div className="flex-grow">
-                          <h4 className="font-semibold text-lg">{store.store_name}</h4>
-                          <p className="text-sm text-gray-600">{store.address}</p>
+                          <h4 className="font-semibold text-lg truncate">{store.store_name}</h4> {/* Truncate store name */}
+                          <p className="text-sm text-gray-600 truncate">{store.address}</p> {/* Truncate address */}
                           {locationStatus === "success" && store.formattedDistance !== undefined && (
                             <p className="text-sm text-gray-500">Distance: {store.formattedDistance}</p>
                           )}

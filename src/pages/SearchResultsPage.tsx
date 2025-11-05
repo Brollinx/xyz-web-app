@@ -376,7 +376,7 @@ const SearchResultsPage = () => {
               <div className="p-1">
                 <h3 className="font-bold text-md">{selectedProductResult.storeName}</h3>
                 <p className="text-xs">{selectedProductResult.storeAddress}</p>
-                <p className="text-xs font-medium mt-1">{selectedProductResult.productName}</p>
+                <p className="text-xs font-medium mt-1 truncate">{selectedProductResult.productName}</p> {/* Truncate product name */}
                 <p className="text-xs">Price: {selectedProductResult.currency_symbol}{selectedProductResult.productPrice.toFixed(2)}</p>
               </div>
             </Popup>
@@ -409,9 +409,9 @@ const SearchResultsPage = () => {
                           className="h-16 w-16 object-cover rounded-md mr-4 flex-shrink-0"
                         />
                         <div className="flex-grow">
-                          <h4 className="font-semibold text-lg">{result.productName}</h4>
-                          <p className="text-sm text-gray-700">{result.storeName}</p>
-                          <p className="text-sm text-gray-600">{result.storeAddress}</p>
+                          <h4 className="font-semibold text-lg truncate">{result.productName}</h4> {/* Truncate product name */}
+                          <p className="text-sm text-gray-700 truncate">{result.storeName}</p> {/* Truncate store name */}
+                          <p className="text-sm text-gray-600 truncate">{result.storeAddress}</p> {/* Truncate store address */}
                           <p className="text-md font-bold text-green-600">
                             {result.currency_symbol}{result.productPrice.toFixed(2)}
                           </p>

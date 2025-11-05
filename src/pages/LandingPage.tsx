@@ -72,13 +72,6 @@ const LandingPage = () => {
         />
       </div>
 
-      {/* Recommended Products Section */}
-      <RecommendedProductsSection
-        userLocation={userLocation}
-        proximityFilter={currentProximityFilter}
-        recentSearchTerms={recentSearchTerms}
-      />
-
       {/* Bottom: Three evenly spaced buttons */}
       <div className="w-full max-w-md flex justify-around space-x-4 pb-8">
         <Button
@@ -103,6 +96,13 @@ const LandingPage = () => {
           Login
         </Button>
       </div>
+
+      {/* Recommended Products Section - Moved below buttons */}
+      <RecommendedProductsSection
+        userLocation={userLocation}
+        proximityFilter={currentProximityFilter}
+        recentSearchTerms={recentSearchTerms}
+      />
 
       {recentSearchTerms.length > 0 && (
         <Button

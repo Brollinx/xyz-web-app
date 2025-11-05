@@ -114,8 +114,8 @@ const FeaturedProductsPage = () => {
                         alt={product.productName}
                         className="w-full h-40 object-cover rounded-md mb-4"
                       />
-                      <h4 className="font-semibold text-lg flex-grow">{product.productName}</h4>
-                      <p className="text-sm text-gray-700">{product.storeName}</p>
+                      <h4 className="font-semibold text-lg flex-grow truncate">{product.productName}</h4> {/* Truncate product name */}
+                      <p className="text-sm text-gray-700 truncate">{product.storeName}</p> {/* Truncate store name */}
                       <p className="text-md font-bold text-green-600">
                         {product.currency_symbol}{product.productPrice.toFixed(2)}
                       </p>
