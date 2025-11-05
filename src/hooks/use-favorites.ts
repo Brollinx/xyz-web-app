@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button"; // Import Button component
 
 const LOCAL_FAVORITES_KEY = "guestFavorites";
 
@@ -42,6 +44,7 @@ export function useFavorites() {
   const [favorites, setFavorites] = useState<FavoriteProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   // Function to sync localStorage favorites to Supabase
   const syncFavorites = useCallback(async (currentUserId: string) => {
@@ -72,8 +75,8 @@ export function useFavorites() {
           price: fav.price,
           image_url: fav.image_url,
           store_name: fav.store_name,
-          currency: fav.currency, // Include currency
-          currency_symbol: fav.currency_symbol, // Include currency symbol
+          currency: fav.currency,
+          currency_symbol: fav.currency_symbol,
         }));
 
       if (favoritesToInsert.length > 0) {
@@ -111,10 +114,8 @@ export function useFavorites() {
 
       if (_event === 'SIGNED_IN' && newUserId) {
         await syncFavorites(newUserId);
-        // After sync, refetch all favorites (Supabase only)
         fetchFavorites(); 
       } else if (_event === 'SIGNED_OUT') {
-        // When signed out, clear Supabase favorites and load guest favorites
         setFavorites(getGuestFavorites());
       }
     });
@@ -122,19 +123,17 @@ export function useFavorites() {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [syncFavorites]); // Add syncFavorites to dependency array
+  }, [syncFavorites]);
 
   // Fetch favorites based on login state
   const fetchFavorites = useCallback(async () => {
     setLoading(true);
     if (!userId) {
-      // Guest user: load from localStorage
       setFavorites(getGuestFavorites());
       setLoading(false);
       return;
     }
 
-    // Logged-in user: load from Supabase
     try {
       const { data, error } = await supabase
         .from("favorites")
@@ -167,19 +166,38 @@ export function useFavorites() {
     }
 
     if (!userId) {
-      // Guest user: add to localStorage
       const newGuestFavorite: FavoriteProduct = {
         ...product,
-        id: Math.random().toString(36).substring(2, 15), // Simple unique ID for localStorage
+        id: Math.random().toString(36).substring(2, 15),
       };
       const updatedFavorites = [...getGuestFavorites(), newGuestFavorite];
       setGuestFavorites(updatedFavorites);
-      setFavorites(updatedFavorites); // Update local state immediately
-      toast.success("Added to favorites!");
+      setFavorites(updatedFavorites);
+
+      // Define the login button JSX as a variable
+      const loginPrompt = (
+        <div className="flex items-center space-x-2">
+          <span>Log in to save permanently.</span>
+          <Button
+            variant="link"
+            className="p-0 h-auto text-blue-600 dark:text-blue-400"
+            onClick={() => {
+              toast.dismiss();
+              navigate('/login');
+            }}
+          >
+            Log in
+          </Button>
+        </div>
+      );
+
+      toast.success("Added to favorites temporarily.", {
+        description: loginPrompt, // Pass the JSX variable here
+        duration: 5000,
+      });
       return;
     }
 
-    // Logged-in user: add to Supabase
     try {
       const { data, error } = await supabase
         .from("favorites")
@@ -194,19 +212,17 @@ export function useFavorites() {
       console.error("Error adding favorite:", error);
       toast.error("Failed to add to favorites.");
     }
-  }, [userId, isFavorited]);
+  }, [userId, isFavorited, navigate]);
 
   const removeFavorite = useCallback(async (productId: string) => {
     if (!userId) {
-      // Guest user: remove from localStorage
       const updatedFavorites = getGuestFavorites().filter((fav) => fav.product_id !== productId);
       setGuestFavorites(updatedFavorites);
-      setFavorites(updatedFavorites); // Update local state immediately
+      setFavorites(updatedFavorites);
       toast.success("Removed from favorites.");
       return;
     }
 
-    // Logged-in user: remove from Supabase
     try {
       const { error } = await supabase
         .from("favorites")
@@ -225,14 +241,12 @@ export function useFavorites() {
 
   const clearAllFavorites = useCallback(async () => {
     if (!userId) {
-      // Guest user: clear localStorage
       setGuestFavorites([]);
-      setFavorites([]); // Update local state immediately
+      setFavorites([]);
       toast.success("All favorites cleared!");
       return;
     }
 
-    // Logged-in user: clear Supabase
     try {
       const { error } = await supabase
         .from("favorites")

@@ -6,14 +6,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, Loader2, RefreshCw, Heart } from "lucide-react"; // Added Heart icon
+import { Search, MapPin, Loader2, RefreshCw, Heart, SlidersHorizontal } from "lucide-react"; // Added SlidersHorizontal icon
 import { MAPBOX_TOKEN } from "@/config";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { calculateDistance, formatDistance, cn } from "@/lib/utils";
 import StoreIcon from "@/assets/store.svg";
 import { useHighPrecisionGeolocation } from "@/hooks/useHighPrecisionGeolocation";
-import { useFavorites } from "@/hooks/use-favorites"; // Import useFavorites hook
+import { useFavorites } from "@/hooks/use-favorites";
+import SearchFilterModal from "@/components/SearchFilterModal"; // Import the new filter modal
 
 const defaultCenter = {
   latitude: 6.5244, // Lagos, Nigeria latitude
@@ -64,13 +65,20 @@ const SearchResultsPage = () => {
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [viewState, setViewState] = useState<Partial<ViewState>>(defaultCenter);
   const [selectedProductResult, setSelectedProductResult] = useState<ProductWithStoreInfo | null>(null);
-  const [productResults, setProductResults] = useState<ProductWithStoreInfo[]>([]);
+  const [allProducts, setAllProducts] = useState<ProductWithStoreInfo[]>([]); // Store all fetched products
+  const [filteredProducts, setFilteredProducts] = useState<ProductWithStoreInfo[]>([]); // Store filtered products
+
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [currentProximityFilter, setCurrentProximityFilter] = useState<number | null>(null);
+  const [currentMinPriceFilter, setCurrentMinPriceFilter] = useState<number | null>(null);
+  const [currentMaxPriceFilter, setCurrentMaxPriceFilter] = useState<number | null>(null);
 
   const { userLocation, loading: loadingLocation, locationStatus, refreshLocation } = useHighPrecisionGeolocation();
-  const { isFavorited, addFavorite, removeFavorite, userId } = useFavorites(); // Use the favorites hook
+  const { isFavorited, addFavorite, removeFavorite, userId } = useFavorites();
 
-  const mapRef = useRef<mapboxgl.Map | null>(null); // Fixed: Initialize useRef with null
+  const mapRef = useRef<mapboxgl.Map | null>(null);
 
+  // Effect to set initial map view based on user location
   useEffect(() => {
     if (locationStatus === "success" && userLocation) {
       setViewState({ latitude: userLocation.lat, longitude: userLocation.lng, zoom: 12 });
@@ -79,8 +87,9 @@ const SearchResultsPage = () => {
     }
   }, [locationStatus, userLocation]);
 
+  // Fetch all products initially (without client-side filters applied yet)
   useEffect(() => {
-    const fetchProductResults = async () => {
+    const fetchAllProducts = async () => {
       try {
         let query = supabase
           .from('products')
@@ -99,7 +108,7 @@ const SearchResultsPage = () => {
         if (error) {
           console.error("Error fetching product results:", error);
           toast.error("Failed to fetch product results. Please try again.");
-          setProductResults([]);
+          setAllProducts([]);
           return;
         }
 
@@ -120,59 +129,89 @@ const SearchResultsPage = () => {
             storeLongitude: product.stores.longitude,
           }));
 
-        setProductResults(fetchedResults);
-        if (fetchedResults.length > 0) {
-          toast.success(`Found ${fetchedResults.length} matching products.`);
-        } else {
+        setAllProducts(fetchedResults);
+        if (fetchedResults.length === 0) {
           toast.info(`No products found for "${searchQuery}".`);
         }
       } catch (error) {
         console.error("Unexpected error fetching product results:", error);
         toast.error("An unexpected error occurred.");
-        setProductResults([]);
+        setAllProducts([]);
       }
     };
 
-    fetchProductResults();
+    fetchAllProducts();
   }, [searchQuery]);
 
-  const processedProductResults = useMemo(() => {
-    if (locationStatus !== "success" || !userLocation || productResults.length === 0) {
-      return productResults;
+  // Apply filters to allProducts to get filteredProducts
+  useEffect(() => {
+    let tempFilteredProducts = allProducts;
+
+    // Apply price range filter
+    if (currentMinPriceFilter !== null) {
+      tempFilteredProducts = tempFilteredProducts.filter(p => p.productPrice >= currentMinPriceFilter);
+    }
+    if (currentMaxPriceFilter !== null) {
+      tempFilteredProducts = tempFilteredProducts.filter(p => p.productPrice <= currentMaxPriceFilter);
     }
 
-    return productResults
-      .map(product => {
-        const distanceInMeters = calculateDistance(
-          userLocation.lat,
-          userLocation.lng,
-          product.storeLatitude,
-          product.storeLongitude
-        );
+    // Calculate distances and apply proximity filter
+    if (locationStatus === "success" && userLocation && currentProximityFilter !== null) {
+      tempFilteredProducts = tempFilteredProducts
+        .map(product => {
+          const distanceInMeters = calculateDistance(
+            userLocation.lat,
+            userLocation.lng,
+            product.storeLatitude,
+            product.storeLongitude
+          );
+          return {
+            ...product,
+            distanceMeters: distanceInMeters,
+            formattedDistance: formatDistance(distanceInMeters),
+          };
+        })
+        .filter(product => (product.distanceMeters ?? Infinity) <= currentProximityFilter)
+        .sort((a, b) => (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity));
+    } else if (locationStatus === "success" && userLocation) {
+      // If no proximity filter, just calculate distances for display and sort
+      tempFilteredProducts = tempFilteredProducts
+        .map(product => {
+          const distanceInMeters = calculateDistance(
+            userLocation.lat,
+            userLocation.lng,
+            product.storeLatitude,
+            product.storeLongitude
+          );
+          return {
+            ...product,
+            distanceMeters: distanceInMeters,
+            formattedDistance: formatDistance(distanceInMeters),
+          };
+        })
+        .sort((a, b) => (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity));
+    } else {
+      // If no user location, just sort by name or default order
+      tempFilteredProducts = tempFilteredProducts.sort((a, b) => a.productName.localeCompare(b.productName));
+    }
 
-        return {
-          ...product,
-          distanceMeters: distanceInMeters,
-          formattedDistance: formatDistance(distanceInMeters),
-        };
-      })
-      .sort((a, b) => (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity));
-  }, [productResults, userLocation, locationStatus]);
+    setFilteredProducts(tempFilteredProducts);
+  }, [allProducts, currentProximityFilter, currentMinPriceFilter, currentMaxPriceFilter, userLocation, locationStatus]);
 
   // Effect to fit map bounds to user and nearby stores
   useEffect(() => {
-    if (mapRef.current && userLocation && processedProductResults.length > 0) {
+    if (mapRef.current && userLocation && filteredProducts.length > 0) {
       const pointsToBound: { lat: number; lng: number }[] = [{ lat: userLocation.lat, lng: userLocation.lng }];
 
-      const storesWithin30km = processedProductResults.filter(
-        (result) => result.distanceMeters !== undefined && result.distanceMeters <= 30000
+      const storesWithinProximity = filteredProducts.filter(
+        (result) => result.distanceMeters !== undefined && (currentProximityFilter === null || result.distanceMeters <= currentProximityFilter)
       );
 
-      const uniqueStoresWithin30km = new Set<string>();
-      storesWithin30km.forEach(result => {
-        if (!uniqueStoresWithin30km.has(result.storeId)) {
+      const uniqueStores = new Set<string>();
+      storesWithinProximity.forEach(result => {
+        if (!uniqueStores.has(result.storeId)) {
           pointsToBound.push({ lat: result.storeLatitude, lng: result.storeLongitude });
-          uniqueStoresWithin30km.add(result.storeId);
+          uniqueStores.add(result.storeId);
         }
       });
 
@@ -185,7 +224,7 @@ const SearchResultsPage = () => {
         mapRef.current.flyTo({ center: [userLocation.lng, userLocation.lat], zoom: 12, duration: 1000 });
       }
     }
-  }, [userLocation, processedProductResults, mapRef.current]);
+  }, [userLocation, filteredProducts, mapRef.current, currentProximityFilter]);
 
   const handleMarkerClick = (productResult: ProductWithStoreInfo) => {
     setSelectedProductResult(productResult);
@@ -202,9 +241,7 @@ const SearchResultsPage = () => {
   };
 
   const handleToggleFavorite = (e: React.MouseEvent, product: ProductWithStoreInfo) => {
-    e.stopPropagation(); // Prevent navigating to store details
-    // Removed the if (!userId) check. The useFavorites hook now handles guest favorites via localStorage.
-
+    e.stopPropagation();
     if (isFavorited(product.productId)) {
       removeFavorite(product.productId);
     } else {
@@ -215,15 +252,22 @@ const SearchResultsPage = () => {
         price: product.productPrice,
         image_url: product.productImageUrl,
         store_name: product.storeName,
-        currency: product.currency, // Added currency
-        currency_symbol: product.currency_symbol, // Added currency_symbol
+        currency: product.currency,
+        currency_symbol: product.currency_symbol,
       });
     }
   };
 
+  const handleApplyFilters = useCallback((proximity: number | null, minPrice: number | null, maxPrice: number | null) => {
+    setCurrentProximityFilter(proximity);
+    setCurrentMinPriceFilter(minPrice);
+    setCurrentMaxPriceFilter(maxPrice);
+    setIsFilterModalOpen(false); // Close modal after applying
+  }, []);
+
   const uniqueStoresForMarkers = useMemo(() => {
     const seenStoreIds = new Set<string>();
-    return processedProductResults.reduce((acc, result) => {
+    return filteredProducts.reduce((acc, result) => {
       if (!seenStoreIds.has(result.storeId)) {
         seenStoreIds.add(result.storeId);
         acc.push({
@@ -235,7 +279,7 @@ const SearchResultsPage = () => {
       }
       return acc;
     }, [] as { id: string; lat: number; lng: number; name: string }[]);
-  }, [processedProductResults]);
+  }, [filteredProducts]);
 
   return (
     <div className="min-h-screen flex flex-col items-center bg-gray-50 p-4">
@@ -251,6 +295,9 @@ const SearchResultsPage = () => {
           />
           <Button type="submit">
             <Search className="h-4 w-4 mr-2" /> Search
+          </Button>
+          <Button variant="outline" size="icon" onClick={() => setIsFilterModalOpen(true)}>
+            <SlidersHorizontal className="h-4 w-4" />
           </Button>
         </div>
         <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
@@ -293,7 +340,7 @@ const SearchResultsPage = () => {
               latitude={store.lat}
               onClick={(e) => {
                 e.originalEvent.stopPropagation();
-                const firstProductInStore = processedProductResults.find(pr => pr.storeId === store.id);
+                const firstProductInStore = filteredProducts.find(pr => pr.storeId === store.id);
                 if (firstProductInStore) handleMarkerClick(firstProductInStore);
               }}
             >
@@ -328,8 +375,8 @@ const SearchResultsPage = () => {
           <CardContent className="flex-grow p-0">
             <ScrollArea className="h-full w-full">
               <div className="p-4 space-y-3">
-                {processedProductResults.length > 0 ? (
-                  processedProductResults.map((result) => (
+                {filteredProducts.length > 0 ? (
+                  filteredProducts.map((result) => (
                     <div
                       key={result.productId}
                       className={cn(
@@ -397,6 +444,11 @@ const SearchResultsPage = () => {
           </CardContent>
         </Card>
       </div>
+      <SearchFilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        onApplyFilters={handleApplyFilters}
+      />
     </div>
   );
 };

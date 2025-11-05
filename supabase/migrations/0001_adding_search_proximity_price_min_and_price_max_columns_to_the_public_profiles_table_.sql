@@ -1,0 +1,4 @@
+ALTER TABLE public.profiles
+ADD COLUMN search_proximity INTEGER,
+ADD COLUMN price_min DOUBLE PRECISION,
+ADD COLUMN price_max DOUBLE PRECISION;

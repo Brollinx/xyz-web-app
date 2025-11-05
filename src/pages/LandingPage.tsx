@@ -58,7 +58,7 @@ const LandingPage = () => {
         <Button
           variant="ghost"
           className="flex-1 text-lg py-6 rounded-lg hover:bg-blue-100 transition-colors"
-          onClick={() => console.log("Clicked Login")}
+          onClick={() => navigate("/login")} {/* Navigate to login page */}
         >
           Login
         </Button>
