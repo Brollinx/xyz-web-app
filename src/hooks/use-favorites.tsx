@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button"; // Import Button component
+import { Button } from "@/components/ui/button";
 
 const LOCAL_FAVORITES_KEY = "guestFavorites";
 
@@ -114,7 +114,7 @@ export function useFavorites() {
 
       if (_event === 'SIGNED_IN' && newUserId) {
         await syncFavorites(newUserId);
-        fetchFavorites(); 
+        fetchFavorites();
       } else if (_event === 'SIGNED_OUT') {
         setFavorites(getGuestFavorites());
       }

@@ -6,15 +6,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, Loader2, RefreshCw, Heart, SlidersHorizontal } from "lucide-react"; // Added SlidersHorizontal icon
+import { Search, MapPin, Loader2, RefreshCw, Heart, SlidersHorizontal } from "lucide-react";
 import { MAPBOX_TOKEN } from "@/config";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { calculateDistance, formatDistance, cn } from "@/lib/utils";
 import StoreIcon from "@/assets/store.svg";
 import { useHighPrecisionGeolocation } from "@/hooks/useHighPrecisionGeolocation";
-import { useFavorites } from "@/hooks/use-favorites";
-import SearchFilterModal from "@/components/SearchFilterModal"; // Import the new filter modal
+import { useFavorites } from "@/hooks/use-favorites"; // Updated import path
+import SearchFilterModal from "@/components/SearchFilterModal";
 
 const defaultCenter = {
   latitude: 6.5244, // Lagos, Nigeria latitude
@@ -65,8 +65,8 @@ const SearchResultsPage = () => {
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [viewState, setViewState] = useState<Partial<ViewState>>(defaultCenter);
   const [selectedProductResult, setSelectedProductResult] = useState<ProductWithStoreInfo | null>(null);
-  const [allProducts, setAllProducts] = useState<ProductWithStoreInfo[]>([]); // Store all fetched products
-  const [filteredProducts, setFilteredProducts] = useState<ProductWithStoreInfo[]>([]); // Store filtered products
+  const [allProducts, setAllProducts] = useState<ProductWithStoreInfo[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<ProductWithStoreInfo[]>([]);
 
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [currentProximityFilter, setCurrentProximityFilter] = useState<number | null>(null);

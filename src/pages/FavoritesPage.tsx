@@ -5,7 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Loader2, Trash2, HeartOff } from "lucide-react";
 import { toast } from "sonner";
-import { useFavorites } from "@/hooks/use-favorites";
+import { useFavorites } from "@/hooks/use-favorites"; // Updated import path
 
 const FavoritesPage = () => {
   const navigate = useNavigate();

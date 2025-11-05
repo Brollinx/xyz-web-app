@@ -5,15 +5,15 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import mapboxgl, { LinePaint } from "mapbox-gl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input"; // Import Input component
-import { Loader2, Footprints, Search, Heart } from "lucide-react"; // Import Search and Heart icon
+import { Input } from "@/components/ui/input";
+import { Loader2, Footprints, Search, Heart } from "lucide-react";
 import { MAPBOX_TOKEN } from "@/config";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import type { Feature, GeoJsonProperties, Geometry } from "geojson";
 import StoreIcon from "@/assets/store.svg";
 import { addViewedStore } from "@/utils/viewedItems";
-import { useFavorites } from "@/hooks/use-favorites"; // Import useFavorites hook
+import { useFavorites } from "@/hooks/use-favorites"; // Updated import path
 
 const containerStyle = {
   width: "100%",
@@ -76,16 +76,16 @@ const StoreDetailsPage = () => {
 
   const [store, setStore] = useState<StoreInfo | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [allStoreProducts, setAllStoreProducts] = useState<Product[]>([]); // Store all products
-  const [productSearchQuery, setProductSearchQuery] = useState(""); // New state for product search
+  const [allStoreProducts, setAllStoreProducts] = useState<Product[]>([]);
+  const [productSearchQuery, setProductSearchQuery] = useState("");
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [routeGeoJson, setRouteGeoJson] = useState<Feature<Geometry, GeoJsonProperties> | null>(null);
   
   const [loading, setLoading] = useState(true);
 
-  const { isFavorited, addFavorite, removeFavorite, userId } = useFavorites(); // Use the favorites hook
+  const { isFavorited, addFavorite, removeFavorite, userId } = useFavorites();
 
-  const mapRef = useRef<mapboxgl.Map | null>(null); // Fixed: Initialize useRef with null
+  const mapRef = useRef<mapboxgl.Map | null>(null);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -130,7 +130,7 @@ const StoreDetailsPage = () => {
           .eq("is_active", true);
 
         if (allProductsError) throw allProductsError;
-        setAllStoreProducts(allProductsData || []); // Store all products
+        setAllStoreProducts(allProductsData || []);
 
         if (productId) {
           // If a specific product ID is provided, find it in the fetched data
@@ -216,9 +216,7 @@ const StoreDetailsPage = () => {
   };
 
   const handleToggleFavorite = (e: React.MouseEvent, product: Product) => {
-    e.stopPropagation(); // Prevent navigating to store details
-    // Removed the if (!userId) check. The useFavorites hook now handles guest favorites via localStorage.
-
+    e.stopPropagation();
     if (isFavorited(product.id)) {
       removeFavorite(product.id);
     } else {
@@ -233,8 +231,8 @@ const StoreDetailsPage = () => {
         price: product.price,
         image_url: product.image_url,
         store_name: store.store_name,
-        currency: product.currency, // Added currency
-        currency_symbol: product.currency_symbol, // Added currency_symbol
+        currency: product.currency,
+        currency_symbol: product.currency_symbol,
       });
     }
   };
@@ -344,7 +342,7 @@ const StoreDetailsPage = () => {
             </Button>
         </div>
 
-        {allStoreProducts.length > 1 && ( // Only show "Other Products" if there are more than just the selected one
+        {allStoreProducts.length > 1 && (
           <Card>
             <CardHeader>
               <CardTitle>Other Products at {store.store_name}</CardTitle>
