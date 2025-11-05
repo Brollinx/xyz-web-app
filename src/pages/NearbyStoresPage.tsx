@@ -10,6 +10,7 @@ import { calculateDistance, formatDistance, cn } from "@/lib/utils";
 import StoreIcon from "@/assets/store.svg";
 import { useHighPrecisionGeolocation } from "@/hooks/useHighPrecisionGeolocation";
 import SearchBar from "@/components/SearchBar"; // Import SearchBar
+import StoreFilterModal from "@/components/StoreFilterModal"; // Import the new StoreFilterModal
 
 interface StoreInfo {
   id: string;
@@ -25,7 +26,9 @@ const NearbyStoresPage = () => {
   const navigate = useNavigate();
   const [stores, setStores] = useState<StoreInfo[]>([]);
   const [loadingStores, setLoadingStores] = useState(true);
-  const [storeSearchQuery, setStoreSearchQuery] = useState(""); // New state for store search
+  const [storeSearchQuery, setStoreSearchQuery] = useState("");
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [currentProximityFilter, setCurrentProximityFilter] = useState<number | null>(null);
 
   const { userLocation, loading: loadingLocation, locationStatus, refreshLocation } = useHighPrecisionGeolocation();
 
@@ -82,31 +85,43 @@ const NearbyStoresPage = () => {
       );
     }
 
-    if (locationStatus !== "success" || !userLocation || filtered.length === 0) {
-      return filtered;
+    // Calculate distances and apply proximity filter
+    if (locationStatus === "success" && userLocation) {
+      filtered = filtered
+        .map(store => {
+          const distanceInMeters = calculateDistance(
+            userLocation.lat,
+            userLocation.lng,
+            store.latitude,
+            store.longitude
+          );
+          return {
+            ...store,
+            distanceMeters: distanceInMeters,
+            formattedDistance: formatDistance(distanceInMeters),
+          };
+        })
+        .filter(store => (currentProximityFilter === null || (store.distanceMeters ?? Infinity) <= currentProximityFilter))
+        .sort((a, b) => (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity));
+    } else {
+      // If no user location, just sort by name or default order
+      filtered = filtered.sort((a, b) => a.store_name.localeCompare(b.store_name));
     }
 
-    return filtered
-      .map(store => {
-        const distanceInMeters = calculateDistance(
-          userLocation.lat,
-          userLocation.lng,
-          store.latitude,
-          store.longitude
-        );
-
-        return {
-          ...store,
-          distanceMeters: distanceInMeters,
-          formattedDistance: formatDistance(distanceInMeters),
-        };
-      })
-      .sort((a, b) => (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity));
-  }, [stores, userLocation, locationStatus, storeSearchQuery]);
+    return filtered;
+  }, [stores, userLocation, locationStatus, storeSearchQuery, currentProximityFilter]);
 
   const handleStoreSearch = useCallback((query: string) => {
     setStoreSearchQuery(query);
   }, []);
+
+  const handleApplyProximityFilter = useCallback((proximity: number | null) => {
+    setCurrentProximityFilter(proximity);
+  }, []);
+
+  const isFilterActive = useMemo(() => {
+    return currentProximityFilter !== null;
+  }, [currentProximityFilter]);
 
   if (loadingStores || loadingLocation) {
     return (
@@ -126,8 +141,8 @@ const NearbyStoresPage = () => {
         <div className="flex w-full items-center space-x-2 mx-auto">
           <SearchBar
             onSearch={handleStoreSearch}
-            onOpenFilters={() => { /* No filters for store search */ }}
-            isFilterActive={false} // No filters active for store search
+            onOpenFilters={() => setIsFilterModalOpen(true)}
+            isFilterActive={isFilterActive}
             placeholder="Search for a store by name or address..."
           />
         </div>
@@ -168,10 +183,12 @@ const NearbyStoresPage = () => {
                           className="h-16 w-16 object-contain rounded-md mr-4 flex-shrink-0"
                         />
                         <div className="flex-grow">
-                          <h4 className="font-semibold text-lg truncate">{store.store_name}</h4> {/* Truncate store name */}
-                          <p className="text-sm text-gray-600 truncate">{store.address}</p> {/* Truncate address */}
-                          {locationStatus === "success" && store.formattedDistance !== undefined && (
+                          <h4 className="font-semibold text-lg truncate">{store.store_name}</h4>
+                          <p className="text-sm text-gray-600 truncate">{store.address}</p>
+                          {locationStatus === "success" && store.formattedDistance !== undefined ? (
                             <p className="text-sm text-gray-500">Distance: {store.formattedDistance}</p>
+                          ) : (
+                            <p className="text-sm text-red-500">Location unavailable. Distance not shown.</p>
                           )}
                         </div>
                       </div>
@@ -190,6 +207,12 @@ const NearbyStoresPage = () => {
           </CardContent>
         </Card>
       </div>
+      <StoreFilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        onApplyFilters={handleApplyProximityFilter}
+        initialProximity={currentProximityFilter}
+      />
     </div>
   );
 };
