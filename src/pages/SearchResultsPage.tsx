@@ -15,6 +15,7 @@ import StoreIcon from "@/assets/store.svg";
 import { useHighPrecisionGeolocation } from "@/hooks/useHighPrecisionGeolocation";
 import { useFavorites } from "@/hooks/use-favorites";
 import SearchFilterModal from "@/components/SearchFilterModal";
+import SearchBar from "@/components/SearchBar"; // Import the new SearchBar component
 
 const defaultCenter = {
   latitude: 6.5244, // Lagos, Nigeria latitude
@@ -62,7 +63,7 @@ const SearchResultsPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const initialSearchQuery = searchParams.get("query") || "";
-  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
+  const [currentSearchQuery, setCurrentSearchQuery] = useState(initialSearchQuery); // Renamed to avoid conflict with SearchBar's internal state
   const [viewState, setViewState] = useState<Partial<ViewState>>(defaultCenter);
   const [selectedProductResult, setSelectedProductResult] = useState<ProductWithStoreInfo | null>(null);
   const [allProducts, setAllProducts] = useState<ProductWithStoreInfo[]>([]);
@@ -77,6 +78,11 @@ const SearchResultsPage = () => {
   const { isFavorited, addFavorite, removeFavorite, userId } = useFavorites();
 
   const mapRef = useRef<mapboxgl.Map | null>(null);
+
+  // Determine if any filter is active for visual highlighting
+  const isFilterActive = useMemo(() => {
+    return currentProximityFilter !== null || currentMinPriceFilter !== null || currentMaxPriceFilter !== null;
+  }, [currentProximityFilter, currentMinPriceFilter, currentMaxPriceFilter]);
 
   // Effect to set initial map view based on user location
   useEffect(() => {
@@ -99,8 +105,8 @@ const SearchResultsPage = () => {
           `)
           .eq('is_active', true);
 
-        if (searchQuery) {
-          query = query.ilike('name', `%${searchQuery}%`);
+        if (currentSearchQuery) { // Use currentSearchQuery here
+          query = query.ilike('name', `%${currentSearchQuery}%`);
         }
 
         const { data, error } = await query;
@@ -131,7 +137,7 @@ const SearchResultsPage = () => {
 
         setAllProducts(fetchedResults);
         if (fetchedResults.length === 0) {
-          toast.info(`No products found for "${searchQuery}".`);
+          toast.info(`No products found for "${currentSearchQuery}".`);
         }
       } catch (error) {
         console.error("Unexpected error fetching product results:", error);
@@ -141,7 +147,7 @@ const SearchResultsPage = () => {
     };
 
     fetchAllProducts();
-  }, [searchQuery]);
+  }, [currentSearchQuery]); // Depend on currentSearchQuery
 
   // Apply filters to allProducts to get filteredProducts
   useEffect(() => {
@@ -262,8 +268,12 @@ const SearchResultsPage = () => {
     setCurrentProximityFilter(proximity);
     setCurrentMinPriceFilter(minPrice);
     setCurrentMaxPriceFilter(maxPrice);
-    // Removed: setIsFilterModalOpen(false); // This line was causing the modal to close prematurely
   }, []);
+
+  const handleSearch = useCallback((query: string) => {
+    setCurrentSearchQuery(query);
+    navigate(`/search-results?query=${encodeURIComponent(query)}`);
+  }, [navigate]);
 
   const uniqueStoresForMarkers = useMemo(() => {
     const seenStoreIds = new Set<string>();
@@ -286,19 +296,13 @@ const SearchResultsPage = () => {
       <div className="w-full max-w-4xl text-center space-y-6 mb-8">
         <h1 className="text-4xl font-bold text-gray-900">Search Results for "{initialSearchQuery}"</h1>
         <div className="flex w-full items-center space-x-2 mx-auto">
-          <Input
-            type="text"
+          <SearchBar
+            initialQuery={initialSearchQuery}
+            onSearch={handleSearch}
+            onOpenFilters={() => setIsFilterModalOpen(true)}
+            isFilterActive={isFilterActive}
             placeholder="Refine your search..."
-            className="flex-grow"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <Button type="submit">
-            <Search className="h-4 w-4 mr-2" /> Search
-          </Button>
-          <Button variant="outline" size="icon" onClick={() => setIsFilterModalOpen(true)}>
-            <SlidersHorizontal className="h-4 w-4" />
-          </Button>
         </div>
         <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
           {loadingLocation ? (
