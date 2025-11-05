@@ -24,18 +24,8 @@ const FavoritesPage = () => {
     );
   }
 
-  if (!userId) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4 text-center">
-        <HeartOff className="h-24 w-24 text-gray-400 mb-6" />
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Not Logged In</h1>
-        <p className="text-lg text-gray-600 mb-8">Please log in to view and manage your favorite products.</p>
-        <Button onClick={() => navigate("/")} size="lg">
-          Go to Home / Login
-        </Button>
-      </div>
-    );
-  }
+  // Removed the if (!userId) block to allow guest users to view their favorites.
+  // The useFavorites hook now handles loading from localStorage for guests.
 
   return (
     <div className="min-h-screen flex flex-col items-center bg-gray-50 p-4">

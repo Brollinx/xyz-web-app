@@ -69,7 +69,7 @@ const SearchResultsPage = () => {
   const { userLocation, loading: loadingLocation, locationStatus, refreshLocation } = useHighPrecisionGeolocation();
   const { isFavorited, addFavorite, removeFavorite, userId } = useFavorites(); // Use the favorites hook
 
-  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null); // Fixed: Initialize useRef with null
 
   useEffect(() => {
     if (locationStatus === "success" && userLocation) {
@@ -203,10 +203,7 @@ const SearchResultsPage = () => {
 
   const handleToggleFavorite = (e: React.MouseEvent, product: ProductWithStoreInfo) => {
     e.stopPropagation(); // Prevent navigating to store details
-    if (!userId) {
-      toast.error("Please log in to add products to favorites.");
-      return;
-    }
+    // Removed the if (!userId) check. The useFavorites hook now handles guest favorites via localStorage.
 
     if (isFavorited(product.productId)) {
       removeFavorite(product.productId);

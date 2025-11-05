@@ -11,7 +11,9 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // The isLoggedIn state is no longer used to conditionally render the Favorites link,
+  // but it's kept here for potential future use or other parts of the app.
+  const [isLoggedIn, setIsLoggedIn] = useState(false); 
 
   useEffect(() => {
     const checkUser = async () => {
@@ -49,13 +51,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </Link>
           )}
         </div>
-        {isLoggedIn && ( // Conditionally render Favorites link if logged in
-          <Link to="/favorites">
-            <Button variant="ghost" className="text-primary-foreground hover:bg-primary/80">
-              <Heart className="h-5 w-5 mr-2" /> Favorites
-            </Button>
-          </Link>
-        )}
+        {/* The Favorites link is now always visible, as per requirement */}
+        <Link to="/favorites">
+          <Button variant="ghost" className="text-primary-foreground hover:bg-primary/80">
+            <Heart className="h-5 w-5 mr-2" /> Favorites
+          </Button>
+        </Link>
       </header>
       <main className="flex-grow flex flex-col">
         {children}

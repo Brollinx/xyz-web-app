@@ -85,7 +85,7 @@ const StoreDetailsPage = () => {
 
   const { isFavorited, addFavorite, removeFavorite, userId } = useFavorites(); // Use the favorites hook
 
-  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null); // Fixed: Initialize useRef with null
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -217,10 +217,7 @@ const StoreDetailsPage = () => {
 
   const handleToggleFavorite = (e: React.MouseEvent, product: Product) => {
     e.stopPropagation(); // Prevent navigating to store details
-    if (!userId) {
-      toast.error("Please log in to add products to favorites.");
-      return;
-    }
+    // Removed the if (!userId) check. The useFavorites hook now handles guest favorites via localStorage.
 
     if (isFavorited(product.id)) {
       removeFavorite(product.id);
