@@ -44,7 +44,21 @@ const LandingPage = () => {
         <Button
           variant="ghost"
           className="flex-1 text-lg py-6 rounded-lg hover:bg-blue-100 transition-colors"
-          onClick={() => navigate("/login")} /* Navigate to login page */
+          onClick={() => navigate("/nearby-stores")}
+        >
+          Nearby Stores
+        </Button>
+        <Button
+          variant="ghost"
+          className="flex-1 text-lg py-6 rounded-lg hover:bg-blue-100 transition-colors"
+          onClick={() => navigate("/featured-products")}
+        >
+          Featured Products
+        </Button>
+        <Button
+          variant="ghost"
+          className="flex-1 text-lg py-6 rounded-lg hover:bg-blue-100 transition-colors"
+          onClick={() => navigate("/login")}
         >
           Login
         </Button>
