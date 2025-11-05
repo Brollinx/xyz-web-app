@@ -59,7 +59,7 @@ const FavoritesPage = () => {
                           <h4 className="font-semibold text-lg">{product.product_name}</h4>
                           <p className="text-sm text-gray-700">{product.store_name}</p>
                           <p className="text-md font-bold text-green-600">
-                            ${Number(product.price).toFixed(2)}
+                            {product.currency_symbol}{Number(product.price).toFixed(2)}
                           </p>
                         </div>
                       </div>

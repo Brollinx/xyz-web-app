@@ -215,6 +215,8 @@ const SearchResultsPage = () => {
         price: product.productPrice,
         image_url: product.productImageUrl,
         store_name: product.storeName,
+        currency: product.currency, // Added currency
+        currency_symbol: product.currency_symbol, // Added currency_symbol
       });
     }
   };

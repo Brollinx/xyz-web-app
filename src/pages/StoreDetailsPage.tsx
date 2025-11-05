@@ -233,6 +233,8 @@ const StoreDetailsPage = () => {
         price: product.price,
         image_url: product.image_url,
         store_name: store.store_name,
+        currency: product.currency, // Added currency
+        currency_symbol: product.currency_symbol, // Added currency_symbol
       });
     }
   };

@@ -13,6 +13,8 @@ export interface FavoriteProduct {
   price: number;
   image_url?: string;
   store_name: string;
+  currency: string; // Added currency
+  currency_symbol?: string; // Added currency symbol
   created_at?: string; // Optional for guest users
 }
 
@@ -70,6 +72,8 @@ export function useFavorites() {
           price: fav.price,
           image_url: fav.image_url,
           store_name: fav.store_name,
+          currency: fav.currency, // Include currency
+          currency_symbol: fav.currency_symbol, // Include currency symbol
         }));
 
       if (favoritesToInsert.length > 0) {
