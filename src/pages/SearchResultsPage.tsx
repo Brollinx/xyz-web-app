@@ -38,11 +38,11 @@ interface ProductWithStoreInfo {
   productImageUrl?: string;
   storeId: string;
   storeName: string;
-  storeAddress: string; // Keep address for map popup
+  storeAddress: string;
   storeLatitude: number;
   storeLongitude: number;
   storeOpeningHours: OpeningHour[] | null;
-  storePhoneNumber?: string; // Added storePhoneNumber
+  storePhoneNumber?: string;
   currency: string;
   currency_symbol?: string;
   distanceMeters?: number;
@@ -152,7 +152,7 @@ const SearchResultsPage = () => {
             storeLatitude: product.stores.latitude,
             storeLongitude: product.stores.longitude,
             storeOpeningHours: product.stores.opening_hours,
-            storePhoneNumber: product.stores.phone_number, // Assign phone number
+            storePhoneNumber: product.stores.phone_number,
           }));
 
         setAllProducts(fetchedResults);
@@ -385,7 +385,7 @@ const SearchResultsPage = () => {
             >
               <div className="p-1">
                 <h3 className="font-bold text-md">{selectedProductResult.storeName}</h3>
-                <p className="text-xs">{selectedProductResult.storeAddress}</p> {/* Keep address for map popup */}
+                <p className="text-xs">{selectedProductResult.storeAddress}</p>
                 <p className="text-xs font-medium mt-1 truncate">{selectedProductResult.productName}</p>
                 <p className="text-xs">Price: {selectedProductResult.currency_symbol}{selectedProductResult.productPrice.toFixed(2)}</p>
                 <p className={cn("text-xs font-semibold", getStoreStatus(selectedProductResult.storeOpeningHours).isOpen ? "text-green-600" : "text-red-600")}>
@@ -429,6 +429,7 @@ const SearchResultsPage = () => {
                         <div className="flex-grow">
                           <h4 className="font-semibold text-lg truncate">{result.productName}</h4>
                           <p className="text-sm text-gray-700 truncate">{result.storeName}</p>
+                          <p className="text-sm text-gray-600 truncate">{result.storeAddress}</p> {/* Re-added store address */}
                           <p className="text-md font-bold text-green-600">
                             {result.currency_symbol}{result.productPrice.toFixed(2)}
                           </p>
