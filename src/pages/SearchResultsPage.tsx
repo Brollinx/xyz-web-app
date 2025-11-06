@@ -10,7 +10,7 @@ import { Search, MapPin, Loader2, RefreshCw, Heart, SlidersHorizontal } from "lu
 import { MAPBOX_TOKEN } from "@/config";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { calculateDistance, formatDistance, cn, isStoreOpen } from "@/lib/utils"; // Import isStoreOpen
+import { calculateDistance, formatDistance, cn, getStoreStatus } from "@/lib/utils"; // Import getStoreStatus
 import StoreIcon from "@/assets/store.svg";
 import { useHighPrecisionGeolocation } from "@/hooks/useHighPrecisionGeolocation";
 import { useFavorites } from "@/hooks/use-favorites";
@@ -386,8 +386,9 @@ const SearchResultsPage = () => {
                 <p className="text-xs">{selectedProductResult.storeAddress}</p>
                 <p className="text-xs font-medium mt-1 truncate">{selectedProductResult.productName}</p> {/* Truncate product name */}
                 <p className="text-xs">Price: {selectedProductResult.currency_symbol}{selectedProductResult.productPrice.toFixed(2)}</p>
-                <p className={cn("text-xs font-semibold", isStoreOpen(selectedProductResult.storeOpeningHours) ? "text-green-600" : "text-red-600")}>
-                  {isStoreOpen(selectedProductResult.storeOpeningHours) ? "Opened" : "Closed"}
+                {/* Display store status with closing time */}
+                <p className={cn("text-xs font-semibold", getStoreStatus(selectedProductResult.storeOpeningHours).isOpen ? "text-green-600" : "text-red-600")}>
+                  {getStoreStatus(selectedProductResult.storeOpeningHours).statusText}
                 </p>
               </div>
             </Popup>
@@ -442,8 +443,9 @@ const SearchResultsPage = () => {
                           ) : (
                             <p className="text-sm text-red-500">Location unavailable. Distances not shown.</p>
                           )}
-                          <p className={cn("text-sm font-semibold", isStoreOpen(result.storeOpeningHours) ? "text-green-600" : "text-red-600")}>
-                            {isStoreOpen(result.storeOpeningHours) ? "Opened" : "Closed"}
+                          {/* Display store status with closing time */}
+                          <p className={cn("text-sm font-semibold", getStoreStatus(result.storeOpeningHours).isOpen ? "text-green-600" : "text-red-600")}>
+                            {getStoreStatus(result.storeOpeningHours).statusText}
                           </p>
                         </div>
                       </div>

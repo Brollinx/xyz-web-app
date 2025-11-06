@@ -27,7 +27,7 @@ export function formatDistance(meters: number): string {
   const MILE_IN_METERS = 1609.34;
   if (meters < 10) return '< 10 m';
   if (meters < 1000) return `${Math.round(meters)} m`;
-  if (meters < MILE_IN_METERS) return `${(meters / 1000).toFixed(2)} km`;
+  if (meters < MILE_IN_METERS) return `${(meters / MILE_IN_METERS).toFixed(2)} km`;
   return `${(meters / MILE_IN_METERS).toFixed(2)} mi`;
 }
 
@@ -37,9 +37,11 @@ interface OpeningHour {
   close: string; // e.g., "17:00"
 }
 
-export function isStoreOpen(openingHours: OpeningHour[] | null): boolean {
+// Returns a string indicating if the store is open and its closing time, or "Closed".
+// Also returns a boolean `isOpen` for styling purposes.
+export function getStoreStatus(openingHours: OpeningHour[] | null): { statusText: string; isOpen: boolean } {
   if (!openingHours || openingHours.length === 0) {
-    return true; // Assume open if no hours are specified
+    return { statusText: "Opened", isOpen: true }; // Assume open if no hours are specified
   }
 
   const now = new Date();
@@ -50,7 +52,7 @@ export function isStoreOpen(openingHours: OpeningHour[] | null): boolean {
   const todayHours = openingHours.find(oh => oh.day === currentDayName);
 
   if (!todayHours || !todayHours.open || !todayHours.close) {
-    return true; // Assume open if today's hours are missing or malformed
+    return { statusText: "Opened", isOpen: true }; // Assume open if today's hours are missing or malformed
   }
 
   try {
@@ -65,9 +67,16 @@ export function isStoreOpen(openingHours: OpeningHour[] | null): boolean {
       closeTime.setDate(closeTime.getDate() + 1); // Add a day to close time
     }
 
-    return now >= openTime && now <= closeTime;
+    const isOpen = now >= openTime && now <= closeTime;
+
+    if (isOpen) {
+      const formattedCloseTime = closeTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return { statusText: `Opened (closes at ${formattedCloseTime})`, isOpen: true };
+    } else {
+      return { statusText: "Closed", isOpen: false };
+    }
   } catch (e) {
     console.error("Error parsing opening hours:", e);
-    return true; // Fallback to open if parsing fails
+    return { statusText: "Opened", isOpen: true }; // Fallback to open if parsing fails
   }
 }
