@@ -43,7 +43,7 @@ const RecommendedProductsSection: React.FC<RecommendedProductsSectionProps> = ({
   const navigate = useNavigate();
   const [products, setProducts] = useState<ProductWithStoreInfo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sectionTitle, setSectionTitle] = useState("Recommended for You");
+  const [sectionTitle, setSectionTitle] = useState("Suggested Nearby"); // Changed default title
   const { isFavorited, addFavorite, removeFavorite } = useFavorites();
 
   const fetchProducts = useCallback(async (terms: string[], isFallback: boolean) => {
@@ -58,31 +58,25 @@ const RecommendedProductsSection: React.FC<RecommendedProductsSectionProps> = ({
         .eq('is_active', true);
 
       if (isFallback) {
-        // For fallback, just get a few active products, maybe ordered by creation date
         productQuery = productQuery.order('created_at', { ascending: false }).limit(10);
       } else if (terms.length > 0) {
-        // Build a list of recommended keywords/categories
         const recommendedKeywords = new Set<string>();
         terms.forEach(term => {
           const lowerTerm = term.toLowerCase();
           if (recommendationMapping[lowerTerm]) {
             recommendationMapping[lowerTerm].forEach(keyword => recommendedKeywords.add(keyword));
           }
-          // Also consider the original search term itself for recommendations
           recommendedKeywords.add(lowerTerm);
         });
 
         if (recommendedKeywords.size > 0) {
-          // Search for products whose names or categories match recommended keywords
           const keywordArray = Array.from(recommendedKeywords).map(k => `%${k}%`);
           productQuery = productQuery.or(`name.ilike.any.{${keywordArray.join(',')}},category.ilike.any.{${keywordArray.join(',')}}`);
         } else {
-          // If no specific recommendations, fall back to popular
           productQuery = productQuery.order('created_at', { ascending: false }).limit(10);
           setSectionTitle("Popular Products Around You");
         }
       } else {
-        // If no recent searches, fall back to popular
         productQuery = productQuery.order('created_at', { ascending: false }).limit(10);
         setSectionTitle("Popular Products Around You");
       }
@@ -108,7 +102,6 @@ const RecommendedProductsSection: React.FC<RecommendedProductsSectionProps> = ({
           storeLongitude: product.stores.longitude,
         }));
 
-      // Apply proximity filter if user location is available
       if (userLocation) {
         fetchedProducts = fetchedProducts
           .map(product => {
@@ -127,15 +120,13 @@ const RecommendedProductsSection: React.FC<RecommendedProductsSectionProps> = ({
           .filter(product => (proximityFilter === null || (product.distanceMeters ?? Infinity) <= proximityFilter))
           .sort((a, b) => (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity));
       } else {
-        // If no user location, sort by name or default order
         fetchedProducts = fetchedProducts.sort((a, b) => a.productName.localeCompare(b.productName));
       }
 
       setProducts(fetchedProducts);
       if (fetchedProducts.length === 0 && !isFallback) {
-        // If no recommendations found, try fallback
         setSectionTitle("Popular Products Around You");
-        await fetchProducts([], true); // Recursive call for fallback
+        await fetchProducts([], true);
       } else if (fetchedProducts.length === 0 && isFallback) {
         toast.info("No products found for recommendations or popular items.");
       }
@@ -153,8 +144,8 @@ const RecommendedProductsSection: React.FC<RecommendedProductsSectionProps> = ({
       setSectionTitle("Based on Your Last Searches");
       fetchProducts(recentSearchTerms, false);
     } else {
-      setSectionTitle("Popular Products Around You");
-      fetchProducts([], true); // Fetch popular products if no recent searches
+      setSectionTitle("Suggested Nearby"); // Revert to "Suggested Nearby" for popular
+      fetchProducts([], true);
     }
   }, [recentSearchTerms, userLocation, proximityFilter, fetchProducts]);
 
@@ -178,61 +169,58 @@ const RecommendedProductsSection: React.FC<RecommendedProductsSectionProps> = ({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <p className="ml-4">Loading recommendations...</p>
+      <div className="flex items-center justify-center p-4">
+        <Loader2 className="h-6 w-6 animate-spin" />
+        <p className="ml-2 text-sm text-gray-600">Loading suggestions...</p>
       </div>
     );
   }
 
+  // Automatically collapse if no products
+  if (products.length === 0) {
+    return null;
+  }
+
   return (
-    <Card className="w-full max-w-4xl">
-      <CardHeader>
-        <CardTitle>{sectionTitle}</CardTitle>
+    <Card className="w-full max-w-4xl border-none shadow-none bg-transparent p-0"> {/* Minimal card styling */}
+      <CardHeader className="p-2 pb-1">
+        <CardTitle className="text-base font-medium text-gray-700">{sectionTitle}</CardTitle> {/* Smaller, neutral title */}
       </CardHeader>
-      <CardContent>
-        <ScrollArea className="w-full whitespace-nowrap rounded-md border">
-          <div className="flex w-max space-x-4 p-4">
-            {products.length > 0 ? (
-              products.map((product) => (
-                <div
-                  key={product.productId}
-                  className="w-[180px] flex-shrink-0 p-2 border rounded-md hover:bg-gray-100 cursor-pointer transition-colors flex flex-col justify-between" // Adjusted width and padding
-                  onClick={() => navigate(`/store/${product.storeId}?product=${product.productId}`)}
-                >
-                  <img
-                    src={product.productImageUrl || "/placeholder.svg"}
-                    alt={product.productName}
-                    className="w-full h-28 object-cover rounded-md mb-2" // Adjusted height
-                  />
-                  <div className="flex-grow flex flex-col justify-between">
-                    <h4 className="font-semibold text-sm truncate mb-1">{product.productName}</h4> {/* Truncate product name */}
-                    <p className="text-xs text-gray-700 truncate mb-1">{product.storeName}</p> {/* Truncate store name */}
-                    <p className="text-sm font-bold text-green-600 mb-1">
-                      {product.currency_symbol}{product.productPrice.toFixed(2)}
-                    </p>
-                    {userLocation && product.formattedDistance !== undefined && (
-                      <p className="text-xs text-gray-500">{product.formattedDistance}</p>
-                    )}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => handleToggleFavorite(e, product)}
-                    className="mt-2 self-end h-7 w-7" // Smaller button
-                  >
-                    <Heart
-                      className={cn(
-                        "h-4 w-4", // Smaller icon
-                        isFavorited(product.productId) ? "text-red-500 fill-red-500" : "text-gray-400"
-                      )}
-                    />
-                  </Button>
+      <CardContent className="p-0">
+        <ScrollArea className="w-full whitespace-nowrap rounded-md border-none max-h-[180px]"> {/* Reduced height, no border */}
+          <div className="flex w-max space-x-3 p-2"> {/* Reduced spacing and padding */}
+            {products.map((product) => (
+              <div
+                key={product.productId}
+                className="relative w-[100px] flex-shrink-0 p-1 border rounded-md hover:bg-gray-100 cursor-pointer transition-colors flex flex-col justify-between" // Smaller card, reduced padding
+                onClick={() => navigate(`/store/${product.storeId}?product=${product.productId}`)}
+              >
+                <img
+                  src={product.productImageUrl || "/placeholder.svg"}
+                  alt={product.productName}
+                  className="w-full h-20 object-cover rounded-md mb-1" // Smaller image
+                />
+                <div className="flex-grow flex flex-col justify-between">
+                  <h4 className="font-medium text-xs truncate mb-1">{product.productName}</h4> {/* Smaller font */}
+                  <p className="text-xs font-semibold text-green-600">
+                    {product.currency_symbol}{product.productPrice.toFixed(2)}
+                  </p>
                 </div>
-              ))
-            ) : (
-              <p className="text-center text-gray-500 w-full">No recommendations available.</p>
-            )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={(e) => handleToggleFavorite(e, product)}
+                  className="absolute top-1 right-1 h-6 w-6 p-0 rounded-full bg-white/70 hover:bg-white" // Subtle, smaller button
+                >
+                  <Heart
+                    className={cn(
+                      "h-3 w-3", // Smaller icon
+                      isFavorited(product.productId) ? "text-red-500 fill-red-500" : "text-gray-400"
+                    )}
+                  />
+                </Button>
+              </div>
+            ))}
           </div>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
