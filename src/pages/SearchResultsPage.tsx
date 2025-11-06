@@ -6,17 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, Loader2, RefreshCw, Heart, SlidersHorizontal } from "lucide-react";
+import { Search, MapPin, Loader2, RefreshCw, Heart, SlidersHorizontal, Phone } from "lucide-react"; // Import Phone icon
 import { MAPBOX_TOKEN } from "@/config";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { calculateDistance, formatDistance, cn, getStoreStatus } from "@/lib/utils"; // Import getStoreStatus
+import { calculateDistance, formatDistance, cn, getStoreStatus } from "@/lib/utils";
 import StoreIcon from "@/assets/store.svg";
 import { useHighPrecisionGeolocation } from "@/hooks/useHighPrecisionGeolocation";
 import { useFavorites } from "@/hooks/use-favorites";
 import SearchFilterModal from "@/components/SearchFilterModal";
-import SearchBar from "@/components/SearchBar"; // Import the new SearchBar component
-import { addSearchTerm } from "@/utils/searchHistory"; // Import addSearchTerm
+import SearchBar from "@/components/SearchBar";
+import { addSearchTerm } from "@/utils/searchHistory";
 
 const defaultCenter = {
   latitude: 6.5244, // Lagos, Nigeria latitude
@@ -38,10 +38,11 @@ interface ProductWithStoreInfo {
   productImageUrl?: string;
   storeId: string;
   storeName: string;
-  storeAddress: string;
+  storeAddress: string; // Keep address for map popup
   storeLatitude: number;
   storeLongitude: number;
-  storeOpeningHours: OpeningHour[] | null; // Added storeOpeningHours
+  storeOpeningHours: OpeningHour[] | null;
+  storePhoneNumber?: string; // Added storePhoneNumber
   currency: string;
   currency_symbol?: string;
   distanceMeters?: number;
@@ -68,7 +69,7 @@ const getBoundsForPoints = (points: { lat: number; lng: number }[]) => {
 };
 
 const SearchResultsPage = () => {
-  const [searchParams, setSearchParams] = useSearchParams(); // Use setSearchParams
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const initialSearchQuery = searchParams.get("query") || "";
   const [currentSearchQuery, setCurrentSearchQuery] = useState(initialSearchQuery);
@@ -118,7 +119,7 @@ const SearchResultsPage = () => {
           .from('products')
           .select(`
             id, name, price, stock_quantity, is_active, image_url, currency, currency_symbol,
-            stores (id, store_name, address, latitude, longitude, is_active, opening_hours)
+            stores (id, store_name, address, latitude, longitude, is_active, opening_hours, phone_number)
           `)
           .eq('is_active', true);
 
@@ -150,7 +151,8 @@ const SearchResultsPage = () => {
             storeAddress: product.stores.address,
             storeLatitude: product.stores.latitude,
             storeLongitude: product.stores.longitude,
-            storeOpeningHours: product.stores.opening_hours, // Assign opening hours
+            storeOpeningHours: product.stores.opening_hours,
+            storePhoneNumber: product.stores.phone_number, // Assign phone number
           }));
 
         setAllProducts(fetchedResults);
@@ -383,13 +385,17 @@ const SearchResultsPage = () => {
             >
               <div className="p-1">
                 <h3 className="font-bold text-md">{selectedProductResult.storeName}</h3>
-                <p className="text-xs">{selectedProductResult.storeAddress}</p>
-                <p className="text-xs font-medium mt-1 truncate">{selectedProductResult.productName}</p> {/* Truncate product name */}
+                <p className="text-xs">{selectedProductResult.storeAddress}</p> {/* Keep address for map popup */}
+                <p className="text-xs font-medium mt-1 truncate">{selectedProductResult.productName}</p>
                 <p className="text-xs">Price: {selectedProductResult.currency_symbol}{selectedProductResult.productPrice.toFixed(2)}</p>
-                {/* Display store status with closing time */}
                 <p className={cn("text-xs font-semibold", getStoreStatus(selectedProductResult.storeOpeningHours).isOpen ? "text-green-600" : "text-red-600")}>
                   {getStoreStatus(selectedProductResult.storeOpeningHours).statusText}
                 </p>
+                {selectedProductResult.storePhoneNumber && (
+                  <a href={`tel:${selectedProductResult.storePhoneNumber}`} className="text-xs text-blue-600 hover:underline flex items-center mt-1">
+                    <Phone className="h-3 w-3 mr-1" /> {selectedProductResult.storePhoneNumber}
+                  </a>
+                )}
               </div>
             </Popup>
           )}
@@ -421,9 +427,8 @@ const SearchResultsPage = () => {
                           className="h-16 w-16 object-cover rounded-md mr-4 flex-shrink-0"
                         />
                         <div className="flex-grow">
-                          <h4 className="font-semibold text-lg truncate">{result.productName}</h4> {/* Truncate product name */}
-                          <p className="text-sm text-gray-700 truncate">{result.storeName}</p> {/* Truncate store name */}
-                          <p className="text-sm text-gray-600 truncate">{result.storeAddress}</p> {/* Truncate store address */}
+                          <h4 className="font-semibold text-lg truncate">{result.productName}</h4>
+                          <p className="text-sm text-gray-700 truncate">{result.storeName}</p>
                           <p className="text-md font-bold text-green-600">
                             {result.currency_symbol}{result.productPrice.toFixed(2)}
                           </p>
@@ -447,6 +452,11 @@ const SearchResultsPage = () => {
                           <p className={cn("text-sm font-semibold", getStoreStatus(result.storeOpeningHours).isOpen ? "text-green-600" : "text-red-600")}>
                             {getStoreStatus(result.storeOpeningHours).statusText}
                           </p>
+                          {result.storePhoneNumber && (
+                            <a href={`tel:${result.storePhoneNumber}`} className="text-sm text-blue-600 hover:underline flex items-center mt-1" onClick={(e) => e.stopPropagation()}>
+                              <Phone className="h-4 w-4 mr-1" /> {result.storePhoneNumber}
+                            </a>
+                          )}
                         </div>
                       </div>
                       <div className="flex flex-col items-end pl-2">
