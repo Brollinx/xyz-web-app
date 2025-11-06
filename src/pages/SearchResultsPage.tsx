@@ -403,85 +403,77 @@ const SearchResultsPage = () => {
       </div>
 
       <div className="w-full max-w-4xl">
-        <Card className="h-[400px] flex flex-col">
-          <CardHeader>
-            <CardTitle>Matching Products & Stores</CardTitle>
+        <Card className="h-[400px] flex flex-col border-none shadow-none"> {/* Removed card border/shadow */}
+          <CardHeader className="p-2 pb-1"> {/* Reduced padding */}
+            <CardTitle className="text-lg">Matching Products & Stores</CardTitle> {/* Smaller title */}
           </CardHeader>
           <CardContent className="flex-grow p-0">
             <ScrollArea className="h-full w-full">
-              <div className="p-4 space-y-3">
+              <div className="space-y-0"> {/* Removed vertical spacing between items */}
                 {filteredProducts.length > 0 ? (
-                  filteredProducts.map((result) => (
+                  filteredProducts.map((result, index) => (
                     <div
                       key={result.productId}
                       className={cn(
-                        "p-3 border rounded-md hover:bg-gray-100 cursor-pointer transition-colors flex items-center justify-between",
-                        selectedProductResult?.productId === result.productId && "bg-blue-50 border-blue-500 ring-2 ring-blue-200"
+                        "flex items-center py-2 px-3 cursor-pointer transition-colors hover:bg-gray-50", // Reduced padding, added hover
+                        selectedProductResult?.productId === result.productId && "bg-blue-50 border-l-4 border-blue-500", // Highlight selected
+                        index < filteredProducts.length - 1 && "border-b border-gray-200" // Subtle divider
                       )}
                       onClick={() => navigate(`/store/${result.storeId}?product=${result.productId}`)}
                     >
-                      <div className="flex items-center flex-grow">
-                        <img
-                          src={result.productImageUrl || "/placeholder.svg"}
-                          alt={result.productName}
-                          className="h-16 w-16 object-cover rounded-md mr-4 flex-shrink-0"
-                        />
-                        <div className="flex-grow">
-                          <h4 className="font-semibold text-lg truncate">{result.productName}</h4>
-                          <p className="text-sm text-gray-700 truncate">{result.storeName}</p>
-                          <p className="text-sm text-gray-600 truncate">{result.storeAddress}</p> {/* Re-added store address */}
-                          <p className="text-md font-bold text-green-600">
+                      {/* Product Image */}
+                      <img
+                        src={result.productImageUrl || "/placeholder.svg"}
+                        alt={result.productName}
+                        className="h-16 w-16 object-cover rounded-md flex-shrink-0 mr-3" // Fixed size, rounded, margin-right
+                      />
+
+                      {/* Right-side info block */}
+                      <div className="flex-grow min-w-0"> {/* min-w-0 for truncation */}
+                        <h4 className="font-bold text-base truncate">{result.productName}</h4> {/* Bold, text-base */}
+                        <p className="text-sm text-gray-700 truncate">{result.storeName}</p> {/* Text-sm */}
+                        <p className="text-xs text-gray-600 truncate">
+                          {result.storeAddress.split(' ').slice(0, 2).join(' ')}{result.storeAddress.split(' ').length > 2 ? '...' : ''} {/* Shortened address */}
+                        </p>
+                        <div className="flex items-center flex-wrap gap-x-2 text-xs mt-1"> {/* Compact metadata row */}
+                          <span className={cn("font-semibold", result.stockQuantity > 0 ? "text-green-500" : "text-red-500")}>
+                            {result.stockQuantity > 0 ? "🟢 In Stock" : "🔴 Out of Stock"}
+                          </span>
+                          <span className="font-bold text-green-600">
                             {result.currency_symbol}{result.productPrice.toFixed(2)}
-                          </p>
-                          <p className="text-sm">
-                            Stock:{" "}
-                            <span className={result.stockQuantity > 0 ? "text-green-500" : "text-red-500"}>
-                              {result.stockQuantity > 0 ? "In Stock" : "Out of Stock"}
-                            </span>
-                          </p>
-                          {loadingLocation ? (
-                            <p className="text-sm text-gray-500 flex items-center">
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Getting your location to calculate distance...
-                            </p>
-                          ) : userLocation && result.formattedDistance !== undefined ? (
-                            <p className="text-sm text-gray-500">Distance: {result.formattedDistance}</p>
-                          ) : (
-                            <p className="text-sm text-red-500">Location unavailable. Distances not shown.</p>
+                          </span>
+                          {userLocation && result.formattedDistance !== undefined && (
+                            <span className="text-gray-500">{result.formattedDistance}</span>
                           )}
-                          {/* Display store status with closing time */}
-                          <p className={cn("text-sm font-semibold", getStoreStatus(result.storeOpeningHours).isOpen ? "text-green-600" : "text-red-600")}>
+                          <span className={cn("font-semibold", getStoreStatus(result.storeOpeningHours).isOpen ? "text-green-600" : "text-gray-500")}>
                             {getStoreStatus(result.storeOpeningHours).statusText}
-                          </p>
-                          {result.storePhoneNumber && (
-                            <a href={`tel:${result.storePhoneNumber}`} className="text-sm text-blue-600 hover:underline flex items-center mt-1" onClick={(e) => e.stopPropagation()}>
-                              <Phone className="h-4 w-4 mr-1" /> {result.storePhoneNumber}
-                            </a>
-                          )}
+                          </span>
                         </div>
                       </div>
-                      <div className="flex flex-col items-end pl-2">
-                        <Button variant="ghost" size="icon" onClick={(e) => handleMapIconClick(e, result)}>
-                          <MapPin className="h-6 w-6 text-blue-600" />
-                        </Button>
+
+                      {/* Icons on far right */}
+                      <div className="flex flex-col items-end ml-auto pl-2 space-y-1"> {/* ml-auto pushes to right */}
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={(e) => handleToggleFavorite(e, result)}
-                          className="mt-2"
+                          className="h-8 w-8 p-0" // Smaller button
                         >
                           <Heart
                             className={cn(
-                              "h-6 w-6",
+                              "h-5 w-5", // Smaller icon
                               isFavorited(result.productId) ? "text-red-500 fill-red-500" : "text-gray-400"
                             )}
                           />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={(e) => handleMapIconClick(e, result)} className="h-8 w-8 p-0">
+                          <MapPin className="h-5 w-5 text-blue-600" /> {/* Smaller icon */}
                         </Button>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <p className="text-center text-gray-500 mt-8">No matching products or stores found.</p>
+                  <p className="text-center text-gray-500 mt-8 p-4">No matching products or stores found.</p>
                 )}
               </div>
             </ScrollArea>
