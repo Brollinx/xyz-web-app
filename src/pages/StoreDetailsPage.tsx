@@ -221,7 +221,8 @@ const StoreDetailsPage = () => {
       toast.warning("Your location is not available to calculate a route.");
       return;
     }
-    navigate(`/route?lat=${store.latitude}&lng=${store.longitude}`);
+    // Pass storeId along with lat and lng
+    navigate(`/route?storeId=${store.id}&lat=${store.latitude}&lng=${store.longitude}`);
   };
 
   const handleToggleFavorite = (e: React.MouseEvent, product: Product) => {

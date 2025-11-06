@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import Map, { Source, Layer, Marker } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MAPBOX_TOKEN } from "@/config";
-import { Loader2, Car, Footprints } from "lucide-react";
+import { Loader2, Car, Footprints, Phone, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,18 +11,31 @@ import type { Feature, GeoJsonProperties, Geometry } from "geojson";
 import StoreIcon from "@/assets/store.svg";
 import NavIcon from "@/assets/nav.svg";
 import mapboxgl, { LinePaint } from "mapbox-gl";
-import { formatDistance } from "@/lib/utils"; // Import formatDistance
+import { formatDistance, getStoreStatus, calculateDistance, cn } from "@/lib/utils"; // Import formatDistance, getStoreStatus, calculateDistance, cn
+import { useIsMobile } from "@/hooks/use-mobile"; // Import useIsMobile hook
+import { supabase } from "@/lib/supabase"; // Import supabase client
+import StoreInfoDisplay from "@/components/StoreInfoDisplay"; // Import new component
 
-const containerStyle = {
-  width: "100%",
-  minHeight: "360px",
-  height: "100vh",
-};
+interface OpeningHour {
+  day: string;
+  open: string;
+  close: string;
+}
+
+interface StoreDetails {
+  id: string;
+  store_name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  opening_hours: OpeningHour[] | null;
+  phone_number?: string;
+}
 
 interface RouteSummary {
   geojson: Feature<Geometry, GeoJsonProperties> | null;
-  distance: string | null;
-  duration: string | null;
+  distance: number | null; // Store raw distance in meters
+  duration: number | null; // Store raw duration in seconds
   error: boolean;
 }
 
@@ -53,6 +66,10 @@ const getBounds = (geometry: Geometry) => {
 
 const RoutePage = () => {
   const [searchParams] = useSearchParams();
+  const isMobile = useIsMobile();
+
+  const [storeId, setStoreId] = useState<string | null>(null);
+  const [storeDetails, setStoreDetails] = useState<StoreDetails | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [destination, setDestination] = useState<{ lat: number; lng: number } | null>(null);
   
@@ -76,7 +93,8 @@ const RoutePage = () => {
             lng: position.coords.longitude,
           };
           setUserLocation(newLocation);
-          if (mapRef.current) {
+          // Only fly to user location if map is not already focused on a route
+          if (mapRef.current && !walkingRouteSummary.geojson && !drivingRouteSummary.geojson) {
             mapRef.current.flyTo({ center: [newLocation.lng, newLocation.lat], zoom: 15, speed: 1.2 });
           }
         },
@@ -97,12 +115,20 @@ const RoutePage = () => {
       toast.error("Geolocation is not supported by your browser.");
       setLoadingInitial(false);
     }
-  }, []);
+  }, [walkingRouteSummary.geojson, drivingRouteSummary.geojson]); // Depend on routeGeoJson to avoid flying when route is present
 
-  // Effect to get destination from search parameters
+  // Effect to get destination and storeId from search parameters and fetch store details
   useEffect(() => {
+    const id = searchParams.get("storeId");
     const destLat = searchParams.get("lat");
     const destLng = searchParams.get("lng");
+
+    if (id) {
+      setStoreId(id);
+    } else {
+      toast.error("Store ID is missing for route page.");
+      setLoadingInitial(false);
+    }
 
     if (destLat && destLng) {
       setDestination({ lat: parseFloat(destLat), lng: parseFloat(destLng) });
@@ -111,6 +137,27 @@ const RoutePage = () => {
       setLoadingInitial(false);
     }
   }, [searchParams]);
+
+  // Fetch store details once storeId is available
+  useEffect(() => {
+    const fetchStoreDetails = async () => {
+      if (!storeId) return;
+      try {
+        const { data, error } = await supabase
+          .from('stores')
+          .select('id, store_name, address, latitude, longitude, opening_hours, phone_number')
+          .eq('id', storeId)
+          .single();
+
+        if (error) throw error;
+        setStoreDetails(data);
+      } catch (error) {
+        console.error("Error fetching store details:", error);
+        toast.error("Failed to load store details for the route.");
+      }
+    };
+    fetchStoreDetails();
+  }, [storeId]);
 
   // Debounced function to fetch directions
   const fetchDirections = useCallback(async (
@@ -138,11 +185,7 @@ const RoutePage = () => {
           geometry: route.geometry,
         };
 
-        const distanceInMeters = route.distance;
-        const formattedDistance = formatDistance(distanceInMeters); // Use new formatDistance utility
-        const formattedDuration = `${Math.round(route.duration / 60)} min`;
-
-        const newSummary = { geojson: newRouteGeoJson, distance: formattedDistance, duration: formattedDuration, error: false };
+        const newSummary = { geojson: newRouteGeoJson, distance: route.distance, duration: route.duration, error: false };
 
         if (mode === 'walking') {
           setWalkingRouteSummary(newSummary);
@@ -198,107 +241,142 @@ const RoutePage = () => {
     mapRef.current = instance;
   }, []);
 
-  const currentRouteGeoJson = selectedTravelMode === 'walking' ? walkingRouteSummary.geojson : drivingRouteSummary.geojson;
+  const currentRouteSummary = selectedTravelMode === 'walking' ? walkingRouteSummary : drivingRouteSummary;
+  const currentRouteGeoJson = currentRouteSummary.geojson;
 
+  const formattedDistance = currentRouteSummary.distance !== null ? formatDistance(currentRouteSummary.distance) : null;
+  const formattedDuration = currentRouteSummary.duration !== null ? `${Math.round(currentRouteSummary.duration / 60)} min` : null;
 
-  if (loadingInitial && (!userLocation || !destination)) {
+  if (loadingInitial || !storeDetails || !destination) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin" />
         <p className="ml-4">Loading map and calculating route...</p>
       </div>
     );
-  } // Removed the extra ')' and '}' here
+  }
 
-  return (
-    <div className="w-full flex-grow relative">
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-        <Button
-          variant={selectedTravelMode === 'walking' ? 'default' : 'outline'}
-          onClick={() => setSelectedTravelMode('walking')}
-          disabled={loadingRoute && selectedTravelMode === 'walking'}
-        >
-          {loadingRoute && selectedTravelMode === 'walking' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Footprints className="mr-2 h-4 w-4" />}
-          Walk {walkingRouteSummary.duration ? `(${walkingRouteSummary.duration})` : ''}
-        </Button>
-        <Button
-          variant={selectedTravelMode === 'driving' ? 'default' : 'outline'}
-          onClick={() => setSelectedTravelMode('driving')}
-          disabled={loadingRoute && selectedTravelMode === 'driving'}
-        >
-          {loadingRoute && selectedTravelMode === 'driving' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Car className="mr-2 h-4 w-4" />}
-          Drive {drivingRouteSummary.duration ? `(${drivingRouteSummary.duration})` : ''}
-        </Button>
-      </div>
+  const mapComponent = (
+    <Map
+      initialViewState={{
+        longitude: userLocation?.lng || destination?.lng || 0,
+        latitude: userLocation?.lat || destination?.lat || 0,
+        zoom: 15,
+      }}
+      style={{ width: "100%", height: "100%" }}
+      mapStyle="mapbox://styles/mapbox/streets-v11"
+      mapboxAccessToken={MAPBOX_TOKEN}
+      ref={(instance) => {
+        if (instance) {
+          handleMapLoad(instance.getMap());
+        }
+      }}
+    >
+      {userLocation && (
+        <Marker longitude={userLocation.lng} latitude={userLocation.lat} anchor="bottom">
+          <img src={NavIcon} alt="User Location" className="h-10 w-10" />
+        </Marker>
+      )}
+      {destination && (
+        <Marker longitude={destination.lng} latitude={destination.lat} anchor="bottom">
+          <img src={StoreIcon} alt="Store Destination" className="h-10 w-10" />
+        </Marker>
+      )}
+      {currentRouteGeoJson && (
+        <Source id="route" type="geojson" data={currentRouteGeoJson}>
+          <Layer
+            id="route-layer"
+            type="line"
+            paint={{
+              "line-color": "#007cbf",
+              "line-width": 4,
+              "line-join": "round",
+              "line-cap": "round",
+            } as LinePaint}
+          />
+        </Source>
+      )}
+    </Map>
+  );
 
-      <Map
-        initialViewState={{
-          longitude: userLocation?.lng || destination?.lng || 0,
-          latitude: userLocation?.lat || destination?.lat || 0,
-          zoom: 15,
-        }}
-        style={containerStyle}
-        mapStyle="mapbox://styles/mapbox/streets-v11"
-        mapboxAccessToken={MAPBOX_TOKEN}
-        ref={(instance) => {
-          if (instance) {
-            handleMapLoad(instance.getMap());
-          }
-        }}
+  const travelModeButtons = (
+    <div className="flex gap-2">
+      <Button
+        variant={selectedTravelMode === 'walking' ? 'default' : 'outline'}
+        onClick={() => setSelectedTravelMode('walking')}
+        disabled={loadingRoute && selectedTravelMode === 'walking'}
       >
-        {userLocation && (
-          <Marker longitude={userLocation.lng} latitude={userLocation.lat} anchor="bottom">
-            <img src={NavIcon} alt="User Location" className="h-10 w-10" />
-          </Marker>
-        )}
-        {destination && (
-          <Marker longitude={destination.lng} latitude={destination.lat} anchor="bottom">
-            <img src={StoreIcon} alt="Store Destination" className="h-10 w-10" />
-          </Marker>
-        )}
-        {currentRouteGeoJson && (
-          <Source id="route" type="geojson" data={currentRouteGeoJson}>
-            <Layer
-              id="route-layer"
-              type="line"
-              paint={{
-                "line-color": "#007cbf",
-                "line-width": 4,
-                "line-join": "round",
-                "line-cap": "round",
-              } as LinePaint}
-            />
-          </Source>
-        )}
-      </Map>
+        {loadingRoute && selectedTravelMode === 'walking' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Footprints className="mr-2 h-4 w-4" />}
+        Walk {walkingRouteSummary.duration !== null ? `(${Math.round(walkingRouteSummary.duration / 60)} min)` : ''}
+      </Button>
+      <Button
+        variant={selectedTravelMode === 'driving' ? 'default' : 'outline'}
+        onClick={() => setSelectedTravelMode('driving')}
+        disabled={loadingRoute && selectedTravelMode === 'driving'}
+      >
+        {loadingRoute && selectedTravelMode === 'driving' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Car className="mr-2 h-4 w-4" />}
+        Drive {drivingRouteSummary.duration !== null ? `(${Math.round(drivingRouteSummary.duration / 60)} min)` : ''}
+      </Button>
+    </div>
+  );
 
-      <Card className="absolute bottom-4 left-1/2 -translate-x-1/2 w-auto max-w-xs bg-white/90 backdrop-blur-sm shadow-lg rounded-lg p-4">
-        <CardContent className="flex flex-col items-center justify-around p-0">
+  const storeInfoDisplay = (
+    <StoreInfoDisplay
+      storeName={storeDetails.store_name}
+      storeAddress={storeDetails.address}
+      storePhoneNumber={storeDetails.phone_number}
+      storeOpeningHours={storeDetails.opening_hours}
+      distance={formattedDistance}
+      duration={formattedDuration}
+    />
+  );
+
+  if (isMobile) {
+    return (
+      <div className="relative flex flex-col h-screen">
+        <div className="relative h-[75vh] w-full rounded-t-lg overflow-hidden">
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
+            {travelModeButtons}
+          </div>
+          {mapComponent}
+        </div>
+        <div className="fixed bottom-0 left-0 right-0 h-[25vh] bg-white rounded-t-2xl shadow-lg p-4 overflow-y-auto transition-transform duration-300 ease-out">
+          <div className="flex flex-col items-center justify-center h-full">
+            {loadingRoute && (
+              <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Calculating route...</span>
+              </div>
+            )}
+            {storeInfoDisplay}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop Layout
+  return (
+    <div className="flex h-screen">
+      <div className="w-[60%] h-full">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
+          {travelModeButtons}
+        </div>
+        {mapComponent}
+      </div>
+      <div className="w-[40%] h-full p-6 bg-white shadow-md overflow-y-auto border-l border-gray-200">
+        <div className="flex flex-col items-center justify-center h-full">
           {loadingRoute && (
             <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span>Calculating route...</span>
             </div>
           )}
-          {walkingRouteSummary.duration && (
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
-              <Footprints className="h-5 w-5 text-blue-600" />
-              <span>Walk: {walkingRouteSummary.duration} ({walkingRouteSummary.distance})</span>
-            </div>
-          )}
-          {drivingRouteSummary.duration && (
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
-              <Car className="h-5 w-5 text-green-600" />
-              <span>Drive: {drivingRouteSummary.duration} ({drivingRouteSummary.distance})</span>
-            </div>
-          )}
-          {(!walkingRouteSummary.duration && !drivingRouteSummary.duration && !loadingRoute) && (
-            <p className="text-sm text-gray-500">No route data available.</p>
-          )}
-        </CardContent>
-      </Card>
+          {storeInfoDisplay}
+        </div>
+      </div>
     </div>
   );
-}; // Removed the extra ')' here
+};
 
 export default RoutePage;
