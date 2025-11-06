@@ -30,3 +30,44 @@ export function formatDistance(meters: number): string {
   if (meters < MILE_IN_METERS) return `${(meters / 1000).toFixed(2)} km`;
   return `${(meters / MILE_IN_METERS).toFixed(2)} mi`;
 }
+
+interface OpeningHour {
+  day: string; // e.g., "Monday", "Tuesday"
+  open: string; // e.g., "09:00"
+  close: string; // e.g., "17:00"
+}
+
+export function isStoreOpen(openingHours: OpeningHour[] | null): boolean {
+  if (!openingHours || openingHours.length === 0) {
+    return true; // Assume open if no hours are specified
+  }
+
+  const now = new Date();
+  const currentDayIndex = now.getDay(); // 0 for Sunday, 1 for Monday, ..., 6 for Saturday
+  const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const currentDayName = daysOfWeek[currentDayIndex];
+
+  const todayHours = openingHours.find(oh => oh.day === currentDayName);
+
+  if (!todayHours || !todayHours.open || !todayHours.close) {
+    return true; // Assume open if today's hours are missing or malformed
+  }
+
+  try {
+    const [openHour, openMinute] = todayHours.open.split(':').map(Number);
+    const [closeHour, closeMinute] = todayHours.close.split(':').map(Number);
+
+    const openTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), openHour, openMinute);
+    let closeTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), closeHour, closeMinute);
+
+    // Handle overnight closing (e.g., open 22:00, close 02:00 next day)
+    if (closeTime < openTime) {
+      closeTime.setDate(closeTime.getDate() + 1); // Add a day to close time
+    }
+
+    return now >= openTime && now <= closeTime;
+  } catch (e) {
+    console.error("Error parsing opening hours:", e);
+    return true; // Fallback to open if parsing fails
+  }
+}

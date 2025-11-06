@@ -10,7 +10,7 @@ import { Search, MapPin, Loader2, RefreshCw, Heart, SlidersHorizontal } from "lu
 import { MAPBOX_TOKEN } from "@/config";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { calculateDistance, formatDistance, cn } from "@/lib/utils";
+import { calculateDistance, formatDistance, cn, isStoreOpen } from "@/lib/utils"; // Import isStoreOpen
 import StoreIcon from "@/assets/store.svg";
 import { useHighPrecisionGeolocation } from "@/hooks/useHighPrecisionGeolocation";
 import { useFavorites } from "@/hooks/use-favorites";
@@ -24,6 +24,12 @@ const defaultCenter = {
   zoom: 10,
 };
 
+interface OpeningHour {
+  day: string;
+  open: string;
+  close: string;
+}
+
 interface ProductWithStoreInfo {
   productId: string;
   productName: string;
@@ -35,6 +41,7 @@ interface ProductWithStoreInfo {
   storeAddress: string;
   storeLatitude: number;
   storeLongitude: number;
+  storeOpeningHours: OpeningHour[] | null; // Added storeOpeningHours
   currency: string;
   currency_symbol?: string;
   distanceMeters?: number;
@@ -111,7 +118,7 @@ const SearchResultsPage = () => {
           .from('products')
           .select(`
             id, name, price, stock_quantity, is_active, image_url, currency, currency_symbol,
-            stores (id, store_name, address, latitude, longitude, is_active)
+            stores (id, store_name, address, latitude, longitude, is_active, opening_hours)
           `)
           .eq('is_active', true);
 
@@ -143,6 +150,7 @@ const SearchResultsPage = () => {
             storeAddress: product.stores.address,
             storeLatitude: product.stores.latitude,
             storeLongitude: product.stores.longitude,
+            storeOpeningHours: product.stores.opening_hours, // Assign opening hours
           }));
 
         setAllProducts(fetchedResults);
@@ -378,6 +386,9 @@ const SearchResultsPage = () => {
                 <p className="text-xs">{selectedProductResult.storeAddress}</p>
                 <p className="text-xs font-medium mt-1 truncate">{selectedProductResult.productName}</p> {/* Truncate product name */}
                 <p className="text-xs">Price: {selectedProductResult.currency_symbol}{selectedProductResult.productPrice.toFixed(2)}</p>
+                <p className={cn("text-xs font-semibold", isStoreOpen(selectedProductResult.storeOpeningHours) ? "text-green-600" : "text-red-600")}>
+                  {isStoreOpen(selectedProductResult.storeOpeningHours) ? "Opened" : "Closed"}
+                </p>
               </div>
             </Popup>
           )}
@@ -431,6 +442,9 @@ const SearchResultsPage = () => {
                           ) : (
                             <p className="text-sm text-red-500">Location unavailable. Distances not shown.</p>
                           )}
+                          <p className={cn("text-sm font-semibold", isStoreOpen(result.storeOpeningHours) ? "text-green-600" : "text-red-600")}>
+                            {isStoreOpen(result.storeOpeningHours) ? "Opened" : "Closed"}
+                          </p>
                         </div>
                       </div>
                       <div className="flex flex-col items-end pl-2">
