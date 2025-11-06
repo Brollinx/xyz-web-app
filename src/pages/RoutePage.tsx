@@ -333,11 +333,11 @@ const RoutePage = () => {
 
   const googleMapsFallbackButton = (
     currentRouteSummary.error && userLocation && destination && (
-      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-4 text-center">
+      <div className="bg-gray-100 border border-gray-300 text-gray-700 px-4 py-3 rounded relative mt-4 text-center">
         <p className="font-bold">No {selectedTravelMode} route found.</p>
         <p className="text-sm mt-1">It might be too far, or there's no suitable path.</p>
         <Button
-          variant="destructive"
+          variant="secondary"
           className="mt-3"
           onClick={() => {
             const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${userLocation.lat},${userLocation.lng}&destination=${destination.lat},${destination.lng}&travelmode=${selectedTravelMode}`;
