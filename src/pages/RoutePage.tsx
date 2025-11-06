@@ -201,13 +201,13 @@ const RoutePage = () => {
           }
         }
       } else {
-        toast.error(`Could not find a ${mode} route.`);
+        // No route found, set error state but don't show toast here
         if (mode === 'walking') setWalkingRouteSummary(prev => ({ ...prev, geojson: null, distance: null, duration: null, error: true }));
         else setDrivingRouteSummary(prev => ({ ...prev, geojson: null, distance: null, duration: null, error: true }));
       }
     } catch (error) {
       console.error(`Error fetching ${mode} directions:`, error);
-      toast.error(`Failed to fetch ${mode} directions.`);
+      toast.error(`Failed to fetch ${mode} directions due to a network error.`); // Keep toast for network errors
       if (mode === 'walking') setWalkingRouteSummary(prev => ({ ...prev, geojson: null, distance: null, duration: null, error: true }));
       else setDrivingRouteSummary(prev => ({ ...prev, geojson: null, distance: null, duration: null, error: true }));
     } finally {
@@ -331,6 +331,25 @@ const RoutePage = () => {
     />
   );
 
+  const googleMapsFallbackButton = (
+    currentRouteSummary.error && userLocation && destination && (
+      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-4 text-center">
+        <p className="font-bold">No {selectedTravelMode} route found.</p>
+        <p className="text-sm mt-1">It might be too far, or there's no suitable path.</p>
+        <Button
+          variant="destructive"
+          className="mt-3"
+          onClick={() => {
+            const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${userLocation.lat},${userLocation.lng}&destination=${destination.lat},${destination.lng}&travelmode=${selectedTravelMode}`;
+            window.open(googleMapsUrl, '_blank');
+          }}
+        >
+          Open in Google Maps
+        </Button>
+      </div>
+    )
+  );
+
   if (isMobile) {
     return (
       <div className="relative flex flex-col h-screen">
@@ -349,6 +368,7 @@ const RoutePage = () => {
               </div>
             )}
             {storeInfoDisplay}
+            {googleMapsFallbackButton}
           </div>
         </div>
       </div>
@@ -373,6 +393,7 @@ const RoutePage = () => {
             </div>
           )}
           {storeInfoDisplay}
+          {googleMapsFallbackButton}
         </div>
       </div>
     </div>
