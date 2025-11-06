@@ -6,7 +6,7 @@ import mapboxgl, { LinePaint } from "mapbox-gl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Footprints, Search, Heart } from "lucide-react";
+import { Loader2, Footprints, Search, Heart, Phone, Clock } from "lucide-react"; // Import Phone and Clock icons
 import { MAPBOX_TOKEN } from "@/config";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ import type { Feature, GeoJsonProperties, Geometry } from "geojson";
 import StoreIcon from "@/assets/store.svg";
 import { addViewedStore } from "@/utils/viewedItems";
 import { useFavorites } from "@/hooks/use-favorites"; // Updated import path
+import { cn, getStoreStatus } from "@/lib/utils"; // Import cn and getStoreStatus
 
 const containerStyle = {
   width: "100%",
@@ -31,12 +32,20 @@ interface Product {
   currency_symbol?: string;
 }
 
+interface OpeningHour {
+  day: string;
+  open: string;
+  close: string;
+}
+
 interface StoreInfo {
   id: string;
   store_name: string;
   address: string;
   latitude: number;
   longitude: number;
+  opening_hours: OpeningHour[] | null; // Added opening_hours
+  phone_number?: string; // Added phone_number
 }
 
 interface UserLocation {
@@ -112,7 +121,7 @@ const StoreDetailsPage = () => {
       try {
         const { data: storeData, error: storeError } = await supabase
           .from("stores")
-          .select(`id, store_name, address, latitude, longitude`)
+          .select(`id, store_name, address, latitude, longitude, opening_hours, phone_number`) // Fetch opening_hours and phone_number
           .eq("id", storeId)
           .single();
 
@@ -260,12 +269,24 @@ const StoreDetailsPage = () => {
 
   if (!store) return <div className="text-center p-8">Could not load store details.</div>;
 
+  const { statusText: storeStatusText, isOpen: isStoreOpen } = getStoreStatus(store.opening_hours);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="w-full max-w-5xl mx-auto p-4 md:p-6 space-y-6">
         <div className="text-center">
           <h1 className="text-4xl font-bold">{store.store_name}</h1>
           <p className="text-lg text-gray-600">{store.address}</p>
+          {store.opening_hours && (
+            <p className={cn("text-md font-semibold mt-1 flex items-center justify-center gap-1", isStoreOpen ? "text-green-600" : "text-red-600")}>
+              <Clock className="h-4 w-4" /> {storeStatusText}
+            </p>
+          )}
+          {store.phone_number && (
+            <a href={`tel:${store.phone_number}`} className="text-md text-blue-600 hover:underline flex items-center justify-center gap-1 mt-1">
+              <Phone className="h-4 w-4" /> {store.phone_number}
+            </a>
+          )}
         </div>
 
         <div style={containerStyle}>
