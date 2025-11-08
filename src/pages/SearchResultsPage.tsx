@@ -4,10 +4,9 @@ import Map, { Marker, Popup, ViewState } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, Loader2, RefreshCw, Heart, SlidersHorizontal, Phone } from "lucide-react"; // Import Phone icon
-import { MAPBOX_TOKEN } from "@/config";
+import { Search, MapPin, Loader2, RefreshCw, Heart, SlidersHorizontal, Phone, Clock } from "lucide-react";
+import { MAPBOX_TOKEN, MAPBOX_LIGHT_STYLE, MAPBOX_DARK_STYLE } from "@/config";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { calculateDistance, formatDistance, cn, getStoreStatus } from "@/lib/utils";
@@ -17,6 +16,18 @@ import { useFavorites } from "@/hooks/use-favorites";
 import SearchFilterModal from "@/components/SearchFilterModal";
 import SearchBar from "@/components/SearchBar";
 import { addSearchTerm } from "@/utils/searchHistory";
+import { useIsMobile } from "@/hooks/use-mobile"; // Import useIsMobile hook
+import { useTheme } from "next-themes"; // Import useTheme hook
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+  DrawerOverlay,
+  DrawerPortal,
+  DrawerClose,
+} from "@/components/ui/drawer"; // Import Drawer components
 
 const defaultCenter = {
   latitude: 6.5244, // Lagos, Nigeria latitude
@@ -94,8 +105,11 @@ const SearchResultsPage = () => {
 
   const { userLocation, loading: loadingLocation, locationStatus, refreshLocation } = useHighPrecisionGeolocation();
   const { isFavorited, addFavorite, removeFavorite, userId } = useFavorites();
+  const isMobile = useIsMobile();
+  const { theme } = useTheme(); // Get current theme
 
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false); // State for controlling the drawer
 
   // Determine if any filter is active for visual highlighting
   const isFilterActive = useMemo(() => {
@@ -259,6 +273,9 @@ const SearchResultsPage = () => {
       longitude: productResult.storeLongitude,
       zoom: 14,
     });
+    if (isMobile) {
+      setIsDrawerOpen(true); // Open drawer on marker click for mobile
+    }
   };
 
   const handleMapIconClick = (e: React.MouseEvent, productResult: ProductWithStoreInfo) => {
@@ -314,166 +331,239 @@ const SearchResultsPage = () => {
     }, [] as { id: string; lat: number; lng: number; name: string }[]);
   }, [filteredProducts]);
 
-  return (
-    <div className="min-h-screen flex flex-col items-center bg-gray-50 p-4">
-      <div className="w-full max-w-4xl text-center space-y-6 mb-8">
-        <h1 className="text-4xl font-bold text-gray-900">Search Results for "{initialSearchQuery}"</h1>
-        <div className="flex w-full items-center space-x-2 mx-auto">
-          <SearchBar
-            initialQuery={initialSearchQuery}
-            onSearch={handleSearch}
-            onOpenFilters={() => setIsFilterModalOpen(true)}
-            isFilterActive={isFilterActive}
-            placeholder="Refine your search..."
-          />
-        </div>
-        <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
-          {loadingLocation ? (
-            <span className="flex items-center"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Getting location...</span>
-          ) : userLocation ? (
-            <span className="flex items-center">
-              Location Accuracy: {Math.round(userLocation.accuracy_meters)} m
-              <Button variant="ghost" size="sm" onClick={refreshLocation} className="ml-2 h-auto p-1">
-                <RefreshCw className="h-4 w-4" />
-              </Button>
+  const mapStyle = theme === "dark" ? MAPBOX_DARK_STYLE : MAPBOX_LIGHT_STYLE;
+
+  const renderProductCard = (product: ProductWithStoreInfo, isMobileView: boolean) => {
+    const { statusText: storeStatusText, isOpen: isStoreOpen } = getStoreStatus(product.storeOpeningHours);
+    return (
+      <div
+        key={product.productId}
+        className={cn(
+          "flex items-center py-2 px-3 cursor-pointer transition-colors hover:bg-accent/50",
+          selectedProductResult?.productId === product.productId && "bg-blue-50 dark:bg-blue-900 border-l-4 border-blue-500",
+          !isMobileView && "border-b border-border" // Subtle divider for desktop
+        )}
+        onClick={() => {
+          navigate(`/store/${product.storeId}?product=${product.productId}`);
+          if (isMobileView) setIsDrawerOpen(false); // Close drawer on navigation for mobile
+        }}
+      >
+        {/* Product Image */}
+        <img
+          src={product.productImageUrl || "/placeholder.svg"}
+          alt={product.productName}
+          className="h-16 w-16 object-cover rounded-md flex-shrink-0 mr-3"
+        />
+
+        {/* Right-side info block */}
+        <div className="flex-grow min-w-0">
+          <h4 className="font-bold text-base truncate">{product.productName}</h4>
+          <p className="text-sm text-muted-foreground truncate">{product.storeName}</p>
+          <p className="text-xs text-muted-foreground truncate">
+            {product.storeAddress.split(' ').slice(0, 2).join(' ')}{product.storeAddress.split(' ').length > 2 ? '...' : ''}
+          </p>
+          <div className="flex items-center flex-wrap gap-x-2 text-xs mt-1">
+            <span className={cn("font-semibold", product.stockQuantity > 0 ? "text-green-500" : "text-red-500")}>
+              {product.stockQuantity > 0 ? "🟢 In Stock" : "🔴 Out of Stock"}
             </span>
-          ) : (
-            <span className="text-red-500">Location unavailable.</span>
-          )}
+            <span className="font-bold text-brand-accent">
+              {product.currency_symbol}{product.productPrice.toFixed(2)}
+            </span>
+            {userLocation && product.formattedDistance !== undefined && (
+              <span className="text-muted-foreground">{product.formattedDistance}</span>
+            )}
+            <span className={cn("font-semibold", isStoreOpen ? "text-green-500" : "text-muted-foreground")}>
+              {storeStatusText}
+            </span>
+          </div>
+        </div>
+
+        {/* Icons on far right */}
+        <div className="flex flex-col items-end ml-auto pl-2 space-y-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => handleToggleFavorite(e, product)}
+            className="h-8 w-8 p-0"
+          >
+            <Heart
+              className={cn(
+                "h-5 w-5",
+                isFavorited(product.productId) ? "text-red-500 fill-red-500" : "text-muted-foreground"
+              )}
+            />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={(e) => handleMapIconClick(e, product)} className="h-8 w-8 p-0">
+            <MapPin className="h-5 w-5 text-primary" />
+          </Button>
         </div>
       </div>
+    );
+  };
 
-      <div className="w-full max-w-4xl h-[400px] mb-4 rounded-lg overflow-hidden shadow-lg">
-        <Map
-          {...viewState}
-          onMove={evt => setViewState(evt.viewState)}
-          style={{ width: "100%", height: "100%" }}
-          mapStyle="mapbox://styles/mapbox/streets-v11"
-          mapboxAccessToken={MAPBOX_TOKEN}
-          ref={(instance) => {
-            if (instance) {
-              mapRef.current = instance.getMap();
-            }
+  const commonHeader = (
+    <div className="w-full max-w-4xl text-center space-y-6 mb-4">
+      <h1 className="text-4xl font-bold text-foreground">Search Results for "{initialSearchQuery}"</h1>
+      <div className="flex w-full items-center space-x-2 mx-auto">
+        <SearchBar
+          initialQuery={initialSearchQuery}
+          onSearch={handleSearch}
+          onOpenFilters={() => setIsFilterModalOpen(true)}
+          isFilterActive={isFilterActive}
+          placeholder="Refine your search..."
+        />
+      </div>
+      <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+        {loadingLocation ? (
+          <span className="flex items-center"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Getting location...</span>
+        ) : userLocation ? (
+          <span className="flex items-center">
+            Location Accuracy: {Math.round(userLocation.accuracy_meters)} m
+            <Button variant="ghost" size="sm" onClick={refreshLocation} className="ml-2 h-auto p-1">
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </span>
+        ) : (
+          <span className="text-destructive">Location unavailable.</span>
+        )}
+      </div>
+    </div>
+  );
+
+  const mapComponent = (
+    <Map
+      {...viewState}
+      onMove={evt => setViewState(evt.viewState)}
+      style={{ width: "100%", height: "100%" }}
+      mapStyle={mapStyle}
+      mapboxAccessToken={MAPBOX_TOKEN}
+      ref={(instance) => {
+        if (instance) {
+          mapRef.current = instance.getMap();
+        }
+      }}
+    >
+      {userLocation && (
+        <Marker longitude={userLocation.lng} latitude={userLocation.lat} color="hsl(var(--brand-accent))" />
+      )}
+
+      {uniqueStoresForMarkers.map((store) => (
+        <Marker
+          key={store.id}
+          longitude={store.lng}
+          latitude={store.lat}
+          onClick={(e) => {
+            e.originalEvent.stopPropagation();
+            const firstProductInStore = filteredProducts.find(pr => pr.storeId === store.id);
+            if (firstProductInStore) handleMarkerClick(firstProductInStore);
           }}
         >
-          {userLocation && (
-            <Marker longitude={userLocation.lng} latitude={userLocation.lat} color="#4285F4" />
-          )}
+          <img src={StoreIcon} alt="Store" className="h-8 w-8 text-primary" />
+        </Marker>
+      ))}
 
-          {uniqueStoresForMarkers.map((store) => (
-            <Marker
-              key={store.id}
-              longitude={store.lng}
-              latitude={store.lat}
-              onClick={(e) => {
-                e.originalEvent.stopPropagation();
-                const firstProductInStore = filteredProducts.find(pr => pr.storeId === store.id);
-                if (firstProductInStore) handleMarkerClick(firstProductInStore);
-              }}
-            >
-              <img src={StoreIcon} alt="Store" className="h-8 w-8 text-red-600" />
-            </Marker>
-          ))}
+      {selectedProductResult && (
+        <Popup
+          longitude={selectedProductResult.storeLongitude}
+          latitude={selectedProductResult.storeLatitude}
+          onClose={() => setSelectedProductResult(null)}
+          closeOnClick={false}
+          anchor="bottom"
+          className="dark:text-foreground" // Ensure popup text is visible in dark mode
+        >
+          <div className="p-1">
+            <h3 className="font-bold text-md">{selectedProductResult.storeName}</h3>
+            <p className="text-xs text-muted-foreground">{selectedProductResult.storeAddress}</p>
+            <p className="text-xs font-medium mt-1 truncate">{selectedProductResult.productName}</p>
+            <p className="text-xs">Price: {selectedProductResult.currency_symbol}{selectedProductResult.productPrice.toFixed(2)}</p>
+            <p className={cn("text-xs font-semibold", getStoreStatus(selectedProductResult.storeOpeningHours).isOpen ? "text-green-600" : "text-destructive")}>
+              {getStoreStatus(selectedProductResult.storeOpeningHours).statusText}
+            </p>
+            {selectedProductResult.storePhoneNumber && (
+              <a href={`tel:${selectedProductResult.storePhoneNumber}`} className="text-xs text-primary hover:underline flex items-center mt-1">
+                <Phone className="h-3 w-3 mr-1" /> {selectedProductResult.storePhoneNumber}
+              </a>
+            )}
+          </div>
+        </Popup>
+      )}
+    </Map>
+  );
 
-          {selectedProductResult && (
-            <Popup
-              longitude={selectedProductResult.storeLongitude}
-              latitude={selectedProductResult.storeLatitude}
-              onClose={() => setSelectedProductResult(null)}
-              closeOnClick={false}
-              anchor="bottom"
-            >
-              <div className="p-1">
-                <h3 className="font-bold text-md">{selectedProductResult.storeName}</h3>
-                <p className="text-xs">{selectedProductResult.storeAddress}</p>
-                <p className="text-xs font-medium mt-1 truncate">{selectedProductResult.productName}</p>
-                <p className="text-xs">Price: {selectedProductResult.currency_symbol}{selectedProductResult.productPrice.toFixed(2)}</p>
-                <p className={cn("text-xs font-semibold", getStoreStatus(selectedProductResult.storeOpeningHours).isOpen ? "text-green-600" : "text-red-600")}>
-                  {getStoreStatus(selectedProductResult.storeOpeningHours).statusText}
-                </p>
-                {selectedProductResult.storePhoneNumber && (
-                  <a href={`tel:${selectedProductResult.storePhoneNumber}`} className="text-xs text-blue-600 hover:underline flex items-center mt-1">
-                    <Phone className="h-3 w-3 mr-1" /> {selectedProductResult.storePhoneNumber}
-                  </a>
-                )}
-              </div>
-            </Popup>
-          )}
-        </Map>
+  if (isMobile) {
+    return (
+      <div className="relative flex flex-col h-screen w-screen overflow-hidden">
+        <div className="absolute top-0 left-0 w-full p-4 z-10 bg-background/80 backdrop-blur-sm">
+          {commonHeader}
+        </div>
+        <div className="flex-grow w-full h-full mt-[180px] md:mt-0"> {/* Adjust margin for header */}
+          {mapComponent}
+        </div>
+
+        <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen} snapPoints={[0.3, 0.9]}>
+          <DrawerTrigger asChild>
+            <div className="absolute bottom-0 left-0 right-0 h-[30vh] bg-background rounded-t-2xl shadow-lg flex flex-col items-center pt-2 cursor-grab active:cursor-grabbing">
+              <div className="w-12 h-1.5 bg-muted-foreground/50 rounded-full mb-2" />
+              <h2 className="text-lg font-semibold text-foreground">
+                {filteredProducts.length} Products Found
+              </h2>
+            </div>
+          </DrawerTrigger>
+          <DrawerPortal>
+            <DrawerOverlay className="fixed inset-0 bg-black/40" />
+            <DrawerContent className="fixed bottom-0 left-0 right-0 mt-24 flex h-[90%] flex-col rounded-t-[10px] bg-background">
+              <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-muted-foreground/50 mt-3" />
+              <DrawerHeader className="text-center">
+                <DrawerTitle className="text-foreground">Matching Products & Stores</DrawerTitle>
+                <DrawerDescription className="text-muted-foreground">
+                  Tap a product to see details or a map pin to recenter.
+                </DrawerDescription>
+              </DrawerHeader>
+              <ScrollArea className="flex-grow overflow-y-auto">
+                <div className="p-4 space-y-0">
+                  {filteredProducts.length > 0 ? (
+                    filteredProducts.map((product) => renderProductCard(product, true))
+                  ) : (
+                    <p className="text-center text-muted-foreground mt-8 p-4">No matching products or stores found.</p>
+                  )}
+                </div>
+              </ScrollArea>
+            </DrawerContent>
+          </DrawerPortal>
+        </Drawer>
+
+        <SearchFilterModal
+          isOpen={isFilterModalOpen}
+          onClose={() => setIsFilterModalOpen(false)}
+          onApplyFilters={handleApplyFilters}
+        />
       </div>
+    );
+  }
 
-      <div className="w-full max-w-4xl">
-        <Card className="h-[400px] flex flex-col border-none shadow-none"> {/* Removed card border/shadow */}
-          <CardHeader className="p-2 pb-1"> {/* Reduced padding */}
-            <CardTitle className="text-lg">Matching Products & Stores</CardTitle> {/* Smaller title */}
+  // Desktop Layout
+  return (
+    <div className="flex h-screen w-screen overflow-hidden">
+      <div className="w-1/2 flex flex-col">
+        <div className="p-4 bg-background/80 backdrop-blur-sm z-10">
+          {commonHeader}
+        </div>
+        <div className="flex-grow w-full">
+          {mapComponent}
+        </div>
+      </div>
+      <div className="w-1/2 h-full p-4 bg-card text-card-foreground shadow-lg overflow-y-auto border-l border-border">
+        <Card className="h-full flex flex-col border-none shadow-none bg-transparent">
+          <CardHeader className="p-2 pb-1">
+            <CardTitle className="text-lg">Matching Products & Stores</CardTitle>
           </CardHeader>
           <CardContent className="flex-grow p-0">
             <ScrollArea className="h-full w-full">
-              <div className="space-y-0"> {/* Removed vertical spacing between items */}
+              <div className="space-y-0">
                 {filteredProducts.length > 0 ? (
-                  filteredProducts.map((result, index) => (
-                    <div
-                      key={result.productId}
-                      className={cn(
-                        "flex items-center py-2 px-3 cursor-pointer transition-colors hover:bg-gray-50", // Reduced padding, added hover
-                        selectedProductResult?.productId === result.productId && "bg-blue-50 border-l-4 border-blue-500", // Highlight selected
-                        index < filteredProducts.length - 1 && "border-b border-gray-200" // Subtle divider
-                      )}
-                      onClick={() => navigate(`/store/${result.storeId}?product=${result.productId}`)}
-                    >
-                      {/* Product Image */}
-                      <img
-                        src={result.productImageUrl || "/placeholder.svg"}
-                        alt={result.productName}
-                        className="h-16 w-16 object-cover rounded-md flex-shrink-0 mr-3" // Fixed size, rounded, margin-right
-                      />
-
-                      {/* Right-side info block */}
-                      <div className="flex-grow min-w-0"> {/* min-w-0 for truncation */}
-                        <h4 className="font-bold text-base truncate">{result.productName}</h4> {/* Bold, text-base */}
-                        <p className="text-sm text-gray-700 truncate">{result.storeName}</p> {/* Text-sm */}
-                        <p className="text-xs text-gray-600 truncate">
-                          {result.storeAddress.split(' ').slice(0, 2).join(' ')}{result.storeAddress.split(' ').length > 2 ? '...' : ''} {/* Shortened address */}
-                        </p>
-                        <div className="flex items-center flex-wrap gap-x-2 text-xs mt-1"> {/* Compact metadata row */}
-                          <span className={cn("font-semibold", result.stockQuantity > 0 ? "text-green-500" : "text-red-500")}>
-                            {result.stockQuantity > 0 ? "🟢 In Stock" : "🔴 Out of Stock"}
-                          </span>
-                          <span className="font-bold text-green-600">
-                            {result.currency_symbol}{result.productPrice.toFixed(2)}
-                          </span>
-                          {userLocation && result.formattedDistance !== undefined && (
-                            <span className="text-gray-500">{result.formattedDistance}</span>
-                          )}
-                          <span className={cn("font-semibold", getStoreStatus(result.storeOpeningHours).isOpen ? "text-green-600" : "text-gray-500")}>
-                            {getStoreStatus(result.storeOpeningHours).statusText}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Icons on far right */}
-                      <div className="flex flex-col items-end ml-auto pl-2 space-y-1"> {/* ml-auto pushes to right */}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => handleToggleFavorite(e, result)}
-                          className="h-8 w-8 p-0" // Smaller button
-                        >
-                          <Heart
-                            className={cn(
-                              "h-5 w-5", // Smaller icon
-                              isFavorited(result.productId) ? "text-red-500 fill-red-500" : "text-gray-400"
-                            )}
-                          />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={(e) => handleMapIconClick(e, result)} className="h-8 w-8 p-0">
-                          <MapPin className="h-5 w-5 text-blue-600" /> {/* Smaller icon */}
-                        </Button>
-                      </div>
-                    </div>
-                  ))
+                  filteredProducts.map((product) => renderProductCard(product, false))
                 ) : (
-                  <p className="text-center text-gray-500 mt-8 p-4">No matching products or stores found.</p>
+                  <p className="text-center text-muted-foreground mt-8 p-4">No matching products or stores found.</p>
                 )}
               </div>
             </ScrollArea>

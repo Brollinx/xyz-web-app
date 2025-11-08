@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Home, ChevronLeft, Heart } from "lucide-react"; // Import Heart icon
 import { supabase } from "@/lib/supabase"; // Import supabase client
+import { ThemeToggle } from "@/components/ThemeToggle"; // Import ThemeToggle
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -51,12 +52,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </Link>
           )}
         </div>
-        {/* The Favorites link is now always visible, as per requirement */}
-        <Link to="/favorites">
-          <Button variant="ghost" className="text-primary-foreground hover:bg-primary/80">
-            <Heart className="h-5 w-5 mr-2" /> Favorites
-          </Button>
-        </Link>
+        <div className="flex items-center space-x-2">
+          {/* The Favorites link is now always visible, as per requirement */}
+          <Link to="/favorites">
+            <Button variant="ghost" className="text-primary-foreground hover:bg-primary/80">
+              <Heart className="h-5 w-5 mr-2" /> Favorites
+            </Button>
+          </Link>
+          <ThemeToggle /> {/* Add the ThemeToggle component */}
+        </div>
       </header>
       <main className="flex-grow flex flex-col">
         {children}
