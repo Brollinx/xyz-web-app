@@ -6,13 +6,13 @@ import {
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
-  DrawerTrigger,
+  DrawerTrigger, // Keep Trigger for initial drag handle, but drawer will be open by default
   DrawerOverlay,
   DrawerPortal,
   DrawerDescription,
 } from "@/components/ui/drawer";
-import ProductCardList from "@/components/ProductCardList"; // Corrected import to default
-import { ProductWithStoreInfo } from "@/hooks/useSearchResultsLogic"; // Import the interface
+import ProductCardList from "@/components/ProductCardList";
+import { ProductWithStoreInfo } from "@/hooks/useSearchResultsLogic";
 
 interface SearchResultsMobileDrawerProps {
   isDrawerOpen: boolean;
@@ -22,7 +22,7 @@ interface SearchResultsMobileDrawerProps {
   isFavorited: (productId: string) => boolean;
   onToggleFavorite: (e: React.MouseEvent, product: ProductWithStoreInfo) => void;
   onMapIconClick: (e: React.MouseEvent, product: ProductWithStoreInfo) => void;
-  onProductClick: (product: ProductWithStoreInfo) => void; // To close drawer on product click
+  onProductClick: (product: ProductWithStoreInfo) => void;
 }
 
 const SearchResultsMobileDrawer: React.FC<SearchResultsMobileDrawerProps> = ({
@@ -36,18 +36,10 @@ const SearchResultsMobileDrawer: React.FC<SearchResultsMobileDrawerProps> = ({
   onProductClick,
 }) => {
   return (
-    <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen} snapPoints={[0.3, 0.9]}>
-      <DrawerTrigger asChild>
-        <div className="absolute bottom-0 left-0 right-0 h-[30vh] bg-background rounded-t-2xl shadow-lg flex flex-col items-center pt-2 cursor-grab active:cursor-grabbing">
-          <div className="w-12 h-1.5 bg-muted-foreground/50 rounded-full mb-2" />
-          <h2 className="text-lg font-semibold text-foreground">
-            {filteredProducts.length} Products Found
-          </h2>
-        </div>
-      </DrawerTrigger>
+    <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen} snapPoints={[0.5, 0.9]}> {/* Starts at 50% height */}
       <DrawerPortal>
-        <DrawerOverlay className="fixed inset-0 bg-black/40" />
-        <DrawerContent className="fixed bottom-0 left-0 right-0 mt-24 flex h-[90%] flex-col rounded-t-[10px] bg-background">
+        <DrawerOverlay className="fixed inset-0 bg-black/20" /> {/* Subtle overlay */}
+        <DrawerContent className="fixed bottom-0 left-0 right-0 mt-24 flex h-[90%] flex-col rounded-t-[10px] bg-background/90 backdrop-blur-sm"> {/* Semi-transparent background */}
           <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-muted-foreground/50 mt-3" />
           <DrawerHeader className="text-center">
             <DrawerTitle className="text-foreground">Matching Products & Stores</DrawerTitle>
@@ -62,7 +54,7 @@ const SearchResultsMobileDrawer: React.FC<SearchResultsMobileDrawerProps> = ({
             onToggleFavorite={onToggleFavorite}
             onMapIconClick={onMapIconClick}
             isMobileView={true}
-            onProductClick={() => setIsDrawerOpen(false)} // Close drawer on product click
+            onProductClick={onProductClick} // Pass the handler to close drawer and update map
           />
         </DrawerContent>
       </DrawerPortal>

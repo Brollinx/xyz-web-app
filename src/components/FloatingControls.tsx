@@ -4,7 +4,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, SlidersHorizontal, ChevronLeft, Home } from "lucide-react";
+import { Search, SlidersHorizontal, ChevronLeft } from "lucide-react"; // Removed Home icon as ChevronLeft serves back/home
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import FavoritesButton from "@/components/FavoritesButton";
@@ -40,11 +40,14 @@ const FloatingControls: React.FC<FloatingControlsProps> = ({
 
   return (
     <div className={cn(
-      "absolute z-20 w-full flex flex-col items-center p-4",
+      "absolute z-20 w-full flex flex-col items-center p-4 space-y-3", // Added space-y-3 for vertical spacing
       isMobileView ? "top-0" : "top-4" // Adjust top position for mobile/desktop
     )}>
       {/* Search Bar */}
-      <form onSubmit={handleSearchSubmit} className="relative flex items-center w-full max-w-md mx-auto">
+      <form onSubmit={handleSearchSubmit} className={cn(
+        "relative flex items-center w-full mx-auto",
+        isMobileView ? "max-w-sm" : "max-w-md" // Narrower on mobile
+      )}>
         <div className={cn(
           "relative flex items-center w-full rounded-full shadow-lg border",
           "bg-background/80 backdrop-blur-sm dark:bg-background/60",
@@ -84,8 +87,8 @@ const FloatingControls: React.FC<FloatingControlsProps> = ({
         </div>
       </form>
 
-      {/* Top-right floating buttons */}
-      <div className="absolute top-0 right-4 flex space-x-2 mt-4">
+      {/* Floating action buttons (Favorites and Theme Toggle) */}
+      <div className="flex space-x-3"> {/* Centered below search bar */}
         <FavoritesButton />
         <ThemeToggle
           className={cn(

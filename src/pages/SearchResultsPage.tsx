@@ -1,19 +1,19 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSearchResultsLogic } from "@/hooks/useSearchResultsLogic";
 import SearchResultsMap from "@/components/SearchResultsMap";
 import ProductCardList from "@/components/ProductCardList";
 import SearchResultsMobileDrawer from "@/components/SearchResultsMobileDrawer";
 import SearchFilterModal from "@/components/SearchFilterModal";
-import FloatingControls from "@/components/FloatingControls"; // New floating controls component
+import FloatingControls from "@/components/FloatingControls";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable"; // For desktop layout
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import mapboxgl from "mapbox-gl";
 
 const SearchResultsPage = () => {
   const isMobile = useIsMobile();
   const mapRef = useRef<mapboxgl.Map | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(true); // Drawer starts open by default on mobile
 
   const {
     initialSearchQuery,
@@ -42,6 +42,13 @@ const SearchResultsPage = () => {
     fitMapToBounds,
   } = useSearchResultsLogic();
 
+  // Ensure drawer is open by default when mobile view is active
+  useEffect(() => {
+    if (isMobile) {
+      setIsDrawerOpen(true);
+    }
+  }, [isMobile]);
+
   const handleMapIconClick = (e: React.MouseEvent, product: any) => {
     e.stopPropagation();
     handleMarkerClick(product);
@@ -51,8 +58,10 @@ const SearchResultsPage = () => {
   };
 
   const handleProductCardClick = (product: any) => {
+    setSelectedProductResult(product); // Set selected product to highlight map pin
     if (isMobile) {
-      setIsDrawerOpen(false);
+      // Optionally close drawer or just let it be
+      // setIsDrawerOpen(false); 
     }
   };
 
@@ -129,6 +138,7 @@ const SearchResultsPage = () => {
                       onToggleFavorite={handleToggleFavorite}
                       onMapIconClick={handleMapIconClick}
                       isMobileView={false}
+                      onProductClick={handleProductCardClick}
                     />
                   </CardContent>
                 </Card>

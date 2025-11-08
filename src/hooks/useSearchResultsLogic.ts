@@ -249,8 +249,22 @@ export function useSearchResultsLogic() {
       latitude: productResult.storeLatitude,
       longitude: productResult.storeLongitude,
       zoom: 14,
+      // transitionDuration: 1000, // Smooth transition to marker
     });
   }, []);
+
+  // Effect to update map view when selectedProductResult changes (e.g., from list click)
+  useEffect(() => {
+    if (selectedProductResult) {
+      setViewState({
+        latitude: selectedProductResult.storeLatitude,
+        longitude: selectedProductResult.storeLongitude,
+        zoom: 14,
+        // transitionDuration: 1000, // Smooth transition to selected product's store
+      });
+    }
+  }, [selectedProductResult]);
+
 
   const handleToggleFavorite = useCallback((e: React.MouseEvent, product: ProductWithStoreInfo) => {
     e.stopPropagation();
