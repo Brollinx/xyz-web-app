@@ -27,6 +27,7 @@ import {
   DrawerOverlay,
   DrawerPortal,
   DrawerClose,
+  DrawerDescription, // Added DrawerDescription here
 } from "@/components/ui/drawer"; // Import Drawer components
 
 const defaultCenter = {
