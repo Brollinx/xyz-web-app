@@ -32,36 +32,36 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     };
   }, []);
 
-  const showBackButton = location.pathname !== "/";
-  const showHomeButton = location.pathname !== "/"; // Hide Home button on the root path
+  const showHeader = location.pathname !== "/search-results"; // Hide header on search results page
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="bg-primary text-primary-foreground p-4 shadow-md flex items-center justify-between">
-        <div className="flex items-center">
-          {showBackButton && (
-            <Button variant="ghost" className="text-primary-foreground hover:bg-primary/80 mr-2" onClick={() => navigate(-1)}>
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-          )}
-          {showHomeButton && (
-            <Link to="/">
+      {showHeader && (
+        <header className="bg-primary text-primary-foreground p-4 shadow-md flex items-center justify-between">
+          <div className="flex items-center">
+            {location.pathname !== "/" && ( // Show back/home button only if not on root
+              <Button variant="ghost" className="text-primary-foreground hover:bg-primary/80 mr-2" onClick={() => navigate(-1)}>
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+            )}
+            {location.pathname !== "/" && (
+              <Link to="/">
+                <Button variant="ghost" className="text-primary-foreground hover:bg-primary/80">
+                  <Home className="h-5 w-5 mr-2" /> Home
+                </Button>
+              </Link>
+            )}
+          </div>
+          <div className="flex items-center space-x-2">
+            <Link to="/favorites">
               <Button variant="ghost" className="text-primary-foreground hover:bg-primary/80">
-                <Home className="h-5 w-5 mr-2" /> Home
+                <Heart className="h-5 w-5 mr-2" /> Favorites
               </Button>
             </Link>
-          )}
-        </div>
-        <div className="flex items-center space-x-2">
-          {/* The Favorites link is now always visible, as per requirement */}
-          <Link to="/favorites">
-            <Button variant="ghost" className="text-primary-foreground hover:bg-primary/80">
-              <Heart className="h-5 w-5 mr-2" /> Favorites
-            </Button>
-          </Link>
-          <ThemeToggle /> {/* Add the ThemeToggle component */}
-        </div>
-      </header>
+            <ThemeToggle />
+          </div>
+        </header>
+      )}
       <main className="flex-grow flex flex-col">
         {children}
       </main>

@@ -7,6 +7,7 @@ export default {
     "./components/**/*.{ts,tsx}",
     "./app/**/*.{ts,tsx}",
     "./src/**/*.{ts,tsx}",
+    "./node_modules/react-resizable-panels/**/*.{js,ts,jsx,tsx}", // Add this line
   ],
   prefix: "",
   theme: {
