@@ -84,20 +84,23 @@ const SearchResultsPage = () => {
       userLocation={userLocation}
       locationStatus={locationStatus}
       refreshLocation={refreshLocation}
+      isMobileView={isMobile} // Pass isMobileView prop
     />
   );
 
   if (isMobile) {
     return (
-      <div className="relative h-screen w-screen overflow-hidden"> {/* Main container is relative for absolute children */}
-        <div className="absolute inset-0"> {/* Map fills the entire background */}
-          {mapComponent}
+      <div className="relative h-screen w-screen overflow-hidden flex flex-col"> {/* Use flex-col for explicit stacking */}
+        {/* Map section - takes 70% of viewport height */}
+        <div className="relative w-full h-[70vh]"> {/* Explicit height for map container */}
+          {mapComponent} {/* Map fills this container */}
+          {/* Header overlays the map */}
+          <div className="absolute top-0 left-0 w-full p-4 z-10 bg-background/80 backdrop-blur-sm">
+            {commonHeader}
+          </div>
         </div>
 
-        <div className="absolute top-0 left-0 w-full p-4 z-10 bg-background/80 backdrop-blur-sm"> {/* Header overlays map */}
-          {commonHeader}
-        </div>
-
+        {/* Mobile Drawer - will overlay the bottom part of the map and the space below it */}
         <SearchResultsMobileDrawer
           isDrawerOpen={isDrawerOpen}
           setIsDrawerOpen={setIsDrawerOpen}
