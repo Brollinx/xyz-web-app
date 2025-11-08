@@ -57,8 +57,8 @@
     --popover: 222.2 84% 4.9%; /* Deep Blue */
     --popover-foreground: 210 40% 98%; /* Soft White */
 
-    --primary: 210 40% 98%; /* Soft White */
-    --primary-foreground: 222.2 47.4% 11.2%; /* Deep Blue */
+    --primary: 222.2 47.4% 11.2%; /* Deep Blue (consistent brand color) */
+    --primary-foreground: 210 40% 98%; /* Soft White (consistent brand color) */
 
     --secondary: 217.2 32.6% 17.5%; /* Darker Cool Gray */
     --secondary-foreground: 210 40% 98%; /* Soft White */

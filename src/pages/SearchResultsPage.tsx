@@ -58,39 +58,46 @@ const SearchResultsPage = () => {
     }
   };
 
-  return (
-    <div className="relative flex flex-col h-screen w-screen overflow-hidden">
-      {/* Common Header */}
-      <div className="absolute top-0 left-0 w-full p-4 z-10 bg-background/80 backdrop-blur-sm">
-        <SearchResultsHeader
-          initialSearchQuery={initialSearchQuery}
-          onSearch={handleSearch}
-          onOpenFilters={() => setIsFilterModalOpen(true)}
-          isFilterActive={isFilterActive}
-          loadingLocation={loadingLocation}
-          userLocation={userLocation}
-          locationStatus={locationStatus}
-          refreshLocation={refreshLocation}
-        />
-      </div>
+  // Common Map Component wrapper
+  const mapComponent = (
+    <SearchResultsMap
+      viewState={viewState}
+      setViewState={setViewState}
+      mapStyle={mapStyle}
+      userLocation={userLocation}
+      uniqueStoresForMarkers={uniqueStoresForMarkers}
+      selectedProductResult={selectedProductResult}
+      onMarkerClick={handleMarkerClick}
+      filteredProducts={filteredProducts}
+      fitMapToBounds={fitMapToBounds}
+    />
+  );
 
-      {/* Map Component */}
-      <div className={isMobile ? "flex-grow w-full h-full mt-[180px] md:mt-0" : "w-1/2 flex-grow h-full"}>
-        <SearchResultsMap
-          viewState={viewState}
-          setViewState={setViewState}
-          mapStyle={mapStyle}
-          userLocation={userLocation}
-          uniqueStoresForMarkers={uniqueStoresForMarkers}
-          selectedProductResult={selectedProductResult}
-          onMarkerClick={handleMarkerClick}
-          filteredProducts={filteredProducts}
-          fitMapToBounds={fitMapToBounds}
-        />
-      </div>
+  // Common Header Component wrapper
+  const commonHeader = (
+    <SearchResultsHeader
+      initialSearchQuery={initialSearchQuery}
+      onSearch={handleSearch}
+      onOpenFilters={() => setIsFilterModalOpen(true)}
+      isFilterActive={isFilterActive}
+      loadingLocation={loadingLocation}
+      userLocation={userLocation}
+      locationStatus={locationStatus}
+      refreshLocation={refreshLocation}
+    />
+  );
 
-      {/* Product List / Drawer */}
-      {isMobile ? (
+  if (isMobile) {
+    return (
+      <div className="relative h-screen w-screen overflow-hidden"> {/* Main container is relative for absolute children */}
+        <div className="absolute inset-0"> {/* Map fills the entire background */}
+          {mapComponent}
+        </div>
+
+        <div className="absolute top-0 left-0 w-full p-4 z-10 bg-background/80 backdrop-blur-sm"> {/* Header overlays map */}
+          {commonHeader}
+        </div>
+
         <SearchResultsMobileDrawer
           isDrawerOpen={isDrawerOpen}
           setIsDrawerOpen={setIsDrawerOpen}
@@ -101,27 +108,42 @@ const SearchResultsPage = () => {
           onMapIconClick={handleMapIconClick}
           onProductClick={handleProductCardClick}
         />
-      ) : (
-        <div className="w-1/2 h-full p-4 bg-card text-card-foreground shadow-lg overflow-y-auto border-l border-border">
-          <Card className="h-full flex flex-col border-none shadow-none bg-transparent">
-            <CardHeader className="p-2 pb-1">
-              <CardTitle className="text-lg">Matching Products & Stores</CardTitle>
-            </CardHeader>
-            <CardContent className="flex-grow p-0">
-              <ProductCardList
-                products={filteredProducts}
-                selectedProductResult={selectedProductResult}
-                isFavorited={isFavorited}
-                onToggleFavorite={handleToggleFavorite}
-                onMapIconClick={handleMapIconClick}
-                isMobileView={false}
-              />
-            </CardContent>
-          </Card>
-        </div>
-      )}
 
-      {/* Filter Modal */}
+        <SearchFilterModal
+          isOpen={isFilterModalOpen}
+          onClose={() => setIsFilterModalOpen(false)}
+          onApplyFilters={handleApplyFilters}
+        />
+      </div>
+    );
+  }
+
+  // Desktop Layout
+  return (
+    <div className="flex flex-col h-screen w-screen overflow-hidden">
+      <div className="p-4 bg-background/80 backdrop-blur-sm z-10">
+        {commonHeader}
+      </div>
+      <div className="flex-grow w-full h-[60vh]"> {/* Map takes 60% of remaining height */}
+        {mapComponent}
+      </div>
+      <div className="flex-grow w-full p-4 bg-card text-card-foreground shadow-lg overflow-y-auto border-t border-border"> {/* List takes remaining height */}
+        <Card className="h-full flex flex-col border-none shadow-none bg-transparent">
+          <CardHeader className="p-2 pb-1">
+            <CardTitle className="text-lg">Matching Products & Stores</CardTitle>
+          </CardHeader>
+          <CardContent className="flex-grow p-0">
+            <ProductCardList
+              products={filteredProducts}
+              selectedProductResult={selectedProductResult}
+              isFavorited={isFavorited}
+              onToggleFavorite={handleToggleFavorite}
+              onMapIconClick={handleMapIconClick}
+              isMobileView={false}
+            />
+          </CardContent>
+        </Card>
+      </div>
       <SearchFilterModal
         isOpen={isFilterModalOpen}
         onClose={() => setIsFilterModalOpen(false)}
