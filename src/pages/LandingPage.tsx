@@ -56,7 +56,7 @@ const LandingPage = () => {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-y-8 bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center gap-y-8 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-950 dark:to-slate-900 p-4">
       {/* Top: Logo */}
       <div className="flex items-center justify-center">
         <img src={Logo} alt="Company Logo" className="h-24 w-24 object-contain" />

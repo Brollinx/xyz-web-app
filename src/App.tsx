@@ -9,7 +9,6 @@ import StoreDetailsPage from "./pages/StoreDetailsPage";
 import RoutePage from "./pages/RoutePage";
 import NearbyStoresPage from "./pages/NearbyStoresPage";
 import FeaturedProductsPage from "./pages/FeaturedProductsPage";
-import FavoritesPage from "./pages/FavoritesPage";
 import LoginPage from "./pages/Login"; // Import the new Login page
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
@@ -30,7 +29,6 @@ const App = () => (
             <Route path="/route" element={<RoutePage />} />
             <Route path="/nearby-stores" element={<NearbyStoresPage />} />
             <Route path="/featured-products" element={<FeaturedProductsPage />} />
-            <Route path="/favorites" element={<FavoritesPage />} />
             <Route path="/login" element={<LoginPage />} /> {/* New route for login */}
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
