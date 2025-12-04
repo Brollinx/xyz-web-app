@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/drawer";
 import ProductCardList from "@/components/ProductCardList";
 import { ProductWithStoreInfo } from "@/hooks/useSearchResultsLogic";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface SearchResultsMobileDrawerProps {
   isDrawerOpen: boolean;
@@ -47,15 +48,19 @@ const SearchResultsMobileDrawer: React.FC<SearchResultsMobileDrawerProps> = ({
               Tap a product to see details or a map pin to recenter.
             </DrawerDescription>
           </DrawerHeader>
-          <ProductCardList
-            products={filteredProducts}
-            selectedProductResult={selectedProductResult}
-            isFavorited={isFavorited}
-            onToggleFavorite={onToggleFavorite}
-            onMapIconClick={onMapIconClick}
-            isMobileView={true}
-            onProductClick={onProductClick} // Pass the handler to close drawer and update map
-          />
+          <ScrollArea className="h-full w-full">
+            <div className="pb-3">
+              <ProductCardList
+                products={filteredProducts}
+                selectedProductResult={selectedProductResult}
+                isFavorited={isFavorited}
+                onToggleFavorite={onToggleFavorite}
+                onMapIconClick={onMapIconClick}
+                isMobileView={true}
+                onProductClick={onProductClick}
+              />
+            </div>
+          </ScrollArea>
         </DrawerContent>
       </DrawerPortal>
     </Drawer>

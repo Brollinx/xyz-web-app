@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Link } from "react-router-dom";
-import { Menu, User, Heart, HelpCircle, Settings, Sun, Moon, Laptop } from "lucide-react";
+import { Menu, User, Heart, HelpCircle, Settings, Sun, Moon, Laptop, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -35,6 +35,12 @@ const FloatingMenu: React.FC = () => {
         <DropdownMenuContent align="start" className="min-w-[220px]">
           <DropdownMenuLabel>Menu</DropdownMenuLabel>
           <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link to="/" className="flex items-center gap-2">
+              <Home className="h-4 w-4" />
+              <span>Home</span>
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link to="/login" className="flex items-center gap-2">
               <User className="h-4 w-4" />

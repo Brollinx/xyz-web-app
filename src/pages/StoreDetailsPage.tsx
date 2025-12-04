@@ -16,6 +16,7 @@ import { addViewedStore } from "@/utils/viewedItems";
 import { useFavorites } from "@/hooks/use-favorites";
 import { cn, getStoreStatus } from "@/lib/utils";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
+import FloatingBackButton from "@/components/FloatingBackButton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTheme } from "next-themes";
 
@@ -401,6 +402,7 @@ const StoreDetailsPage = () => {
     <div className="min-h-screen bg-background">
       {/* Mobile: map on top, bottom sheet scrollable */}
       <div className="md:hidden p-0">
+        <FloatingBackButton />
         {MapSection}
         <Drawer shouldScaleBackground={false} open>
           <DrawerContent className="h-[55vh]">
@@ -415,6 +417,7 @@ const StoreDetailsPage = () => {
 
       {/* Desktop: map left-to-center, details right */}
       <div className="hidden md:grid md:grid-cols-2 gap-4 p-4">
+        <FloatingBackButton />
         <div>{MapSection}</div>
         <div>{DetailsSection}</div>
       </div>

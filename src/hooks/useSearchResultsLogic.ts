@@ -86,7 +86,7 @@ export function useSearchResultsLogic() {
 
   const { userLocation, loading: loadingLocation, locationStatus, refreshLocation } = useHighPrecisionGeolocation();
   const { isFavorited, addFavorite, removeFavorite } = useFavorites();
-  const { theme } = useTheme();
+  const { resolvedTheme } = useTheme();
 
   // Determine if any filter is active for visual highlighting
   const isFilterActive = useMemo(() => {
@@ -314,7 +314,7 @@ export function useSearchResultsLogic() {
     }, [] as { id: string; lat: number; lng: number; name: string }[]);
   }, [filteredProducts]);
 
-  const mapStyle = theme === "dark" ? MAPBOX_DARK_STYLE : MAPBOX_LIGHT_STYLE;
+  const mapStyle = resolvedTheme === "dark" ? MAPBOX_DARK_STYLE : MAPBOX_LIGHT_STYLE;
 
   return {
     initialSearchQuery,

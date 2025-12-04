@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import FloatingBackButton from "@/components/FloatingBackButton";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -88,38 +89,39 @@ const FeaturedProductsPage = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center bg-gray-50 p-4">
+    <div className="min-h-screen flex flex-col items-center bg-gray-50 dark:bg-slate-950 p-4">
+      <FloatingBackButton />
       <div className="w-full max-w-4xl text-center space-y-6 mb-8">
-        <h1 className="text-4xl font-bold text-gray-900">Featured Products</h1>
-        <p className="text-lg text-gray-600">From stores you've recently visited</p>
+        <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100">Featured Products</h1>
+        <p className="text-lg text-gray-600 dark:text-gray-400">From stores you've recently visited</p>
       </div>
 
       <div className="w-full max-w-4xl">
-        <Card className="h-[600px] flex flex-col">
+        <Card className="h-[600px] flex flex-col bg-card text-card-foreground">
           <CardHeader>
-            <CardTitle>Products from Recently Viewed Stores</CardTitle>
+            <CardTitle className="dark:text-gray-200">Products from Recently Viewed Stores</CardTitle>
           </CardHeader>
           <CardContent className="flex-grow p-0">
             <ScrollArea className="h-full w-full">
-              <div className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 {featuredProducts.length > 0 ? (
                   featuredProducts.map((product) => (
                     <div
                       key={product.productId}
-                      className="p-3 border rounded-md hover:bg-gray-100 cursor-pointer transition-colors flex flex-col"
+                      className="p-2 border border-border rounded-md hover:bg-gray-100 dark:hover:bg-slate-800 cursor-pointer transition-colors flex flex-col"
                       onClick={() => navigate(`/store/${product.storeId}?product=${product.productId}`)}
                     >
                       <img
                         src={product.productImageUrl || "/placeholder.svg"}
                         alt={product.productName}
-                        className="w-full h-40 object-cover rounded-md mb-4"
+                        className="w-full h-20 object-cover rounded-md mb-2"
                       />
-                      <h4 className="font-semibold text-lg flex-grow truncate">{product.productName}</h4> {/* Truncate product name */}
-                      <p className="text-sm text-gray-700 truncate">{product.storeName}</p> {/* Truncate store name */}
-                      <p className="text-md font-bold text-green-600">
+                      <h4 className="font-semibold text-sm flex-grow truncate dark:text-gray-200">{product.productName}</h4>
+                      <p className="text-xs text-gray-700 dark:text-gray-400 truncate">{product.storeName}</p>
+                      <p className="text-sm font-bold text-green-600 dark:text-green-400">
                         {product.currency_symbol}{product.productPrice.toFixed(2)}
                       </p>
-                      <p className={`text-sm ${product.stockQuantity > 0 ? "text-green-500" : "text-red-500"}`}>
+                      <p className={`text-xs ${product.stockQuantity > 0 ? "text-green-500" : "text-red-500"}`}>
                         Stock: {product.stockQuantity > 0 ? "In Stock" : "Out of Stock"}
                       </p>
                     </div>

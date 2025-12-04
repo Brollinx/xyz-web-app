@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { calculateDistance, formatDistance, cn } from "@/lib/utils";
 import StoreIcon from "@/assets/store.svg";
+import FloatingBackButton from "@/components/FloatingBackButton";
 import { useHighPrecisionGeolocation } from "@/hooks/useHighPrecisionGeolocation";
 import SearchBar from "@/components/SearchBar"; // Import SearchBar
 import StoreFilterModal from "@/components/StoreFilterModal"; // Import the new StoreFilterModal
@@ -135,7 +136,8 @@ const NearbyStoresPage = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center bg-gray-50 p-4">
+    <div className="min-h-screen flex flex-col items-center bg-gray-50 dark:bg-slate-950 p-4">
+      <FloatingBackButton />
       <div className="w-full max-w-4xl text-center space-y-6 mb-8">
         <h1 className="text-4xl font-bold text-gray-900">Nearby Stores</h1>
         <div className="flex w-full items-center space-x-2 mx-auto">
@@ -162,9 +164,9 @@ const NearbyStoresPage = () => {
       </div>
 
       <div className="w-full max-w-4xl">
-        <Card className="h-[600px] flex flex-col">
+        <Card className="h-[600px] flex flex-col bg-card text-card-foreground">
           <CardHeader>
-            <CardTitle>Stores Near You</CardTitle>
+            <CardTitle className="dark:text-gray-200">Stores Near You</CardTitle>
           </CardHeader>
           <CardContent className="flex-grow p-0">
             <ScrollArea className="h-full w-full">
@@ -173,7 +175,7 @@ const NearbyStoresPage = () => {
                   processedStores.map((store) => (
                     <div
                       key={store.id}
-                      className="p-3 border rounded-md hover:bg-gray-100 cursor-pointer transition-colors flex items-center justify-between"
+                      className="p-3 border border-border rounded-md hover:bg-gray-100 dark:hover:bg-slate-800 cursor-pointer transition-colors flex items-center justify-between"
                       onClick={() => navigate(`/store/${store.id}`)}
                     >
                       <div className="flex items-center flex-grow">
@@ -183,10 +185,10 @@ const NearbyStoresPage = () => {
                           className="h-16 w-16 object-contain rounded-md mr-4 flex-shrink-0"
                         />
                         <div className="flex-grow">
-                          <h4 className="font-semibold text-lg truncate">{store.store_name}</h4>
-                          <p className="text-sm text-gray-600 truncate">{store.address}</p>
+                          <h4 className="font-semibold text-lg truncate dark:text-gray-200">{store.store_name}</h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{store.address}</p>
                           {locationStatus === "success" && store.formattedDistance !== undefined ? (
-                            <p className="text-sm text-gray-500">Distance: {store.formattedDistance}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Distance: {store.formattedDistance}</p>
                           ) : (
                             <p className="text-sm text-red-500">Location unavailable. Distance not shown.</p>
                           )}

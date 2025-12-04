@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import Map, { Source, Layer, Marker } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { MAPBOX_TOKEN } from "@/config";
+import { MAPBOX_TOKEN, MAPBOX_LIGHT_STYLE, MAPBOX_DARK_STYLE } from "@/config";
 import { Loader2, Car, Footprints, Phone, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,6 +15,8 @@ import { formatDistance, getStoreStatus, calculateDistance, cn } from "@/lib/uti
 import { useIsMobile } from "@/hooks/use-mobile"; // Import useIsMobile hook
 import { supabase } from "@/lib/supabase"; // Import supabase client
 import StoreInfoDisplay from "@/components/StoreInfoDisplay"; // Import new component
+import FloatingBackButton from "@/components/FloatingBackButton";
+import { useTheme } from "next-themes";
 
 interface OpeningHour {
   day: string;
@@ -65,6 +67,7 @@ const getBounds = (geometry: Geometry) => {
 };
 
 const RoutePage = () => {
+  const { resolvedTheme } = useTheme();
   const [searchParams] = useSearchParams();
   const isMobile = useIsMobile();
 
@@ -264,7 +267,7 @@ const RoutePage = () => {
         zoom: 15,
       }}
       style={{ width: "100%", height: "100%" }}
-      mapStyle="mapbox://styles/mapbox/streets-v11"
+      mapStyle={resolvedTheme === "dark" ? MAPBOX_DARK_STYLE : MAPBOX_LIGHT_STYLE}
       mapboxAccessToken={MAPBOX_TOKEN}
       ref={(instance) => {
         if (instance) {
@@ -353,13 +356,14 @@ const RoutePage = () => {
   if (isMobile) {
     return (
       <div className="relative flex flex-col h-screen">
+        <FloatingBackButton />
         <div className="relative h-[75vh] w-full rounded-t-lg overflow-hidden">
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
             {travelModeButtons}
           </div>
           {mapComponent}
         </div>
-        <div className="fixed bottom-0 left-0 right-0 h-[25vh] bg-white rounded-t-2xl shadow-lg p-4 overflow-y-auto transition-transform duration-300 ease-out">
+        <div className="fixed bottom-0 left-0 right-0 h-[25vh] bg-card text-card-foreground rounded-t-2xl shadow-lg p-4 overflow-y-auto transition-transform duration-300 ease-out">
           <div className="flex flex-col items-center justify-center h-full">
             {loadingRoute && (
               <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
@@ -375,16 +379,16 @@ const RoutePage = () => {
     );
   }
 
-  // Desktop Layout
   return (
     <div className="flex h-screen">
+      <FloatingBackButton />
       <div className="w-[60%] h-full">
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
           {travelModeButtons}
         </div>
         {mapComponent}
       </div>
-      <div className="w-[40%] h-full p-6 bg-white shadow-md overflow-y-auto border-l border-gray-200">
+      <div className="w-[40%] h-full p-6 bg-card text-card-foreground shadow-md overflow-y-auto border-l border-border">
         <div className="flex flex-col items-center justify-center h-full">
           {loadingRoute && (
             <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
