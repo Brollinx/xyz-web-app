@@ -184,7 +184,7 @@ const RecommendedProductsSection: React.FC<RecommendedProductsSectionProps> = ({
   return (
     <Card className="w-full max-w-4xl border-none shadow-none bg-transparent p-0"> {/* Minimal card styling */}
       <CardHeader className="p-2 pb-1">
-        <CardTitle className="text-base font-medium text-gray-700">{sectionTitle}</CardTitle> {/* Smaller, neutral title */}
+        <CardTitle className="text-base font-medium text-gray-700 dark:text-gray-300">{sectionTitle}</CardTitle> {/* Slightly lighter in dark theme */}
       </CardHeader>
       <CardContent className="p-0">
         <ScrollArea className="w-full whitespace-nowrap rounded-md border-none max-h-[180px]"> {/* Reduced height, no border */}
@@ -192,7 +192,7 @@ const RecommendedProductsSection: React.FC<RecommendedProductsSectionProps> = ({
             {products.map((product) => (
               <div
                 key={product.productId}
-                className="relative w-[100px] flex-shrink-0 p-1 border rounded-md hover:bg-gray-100 cursor-pointer transition-colors flex flex-col justify-between" // Smaller card, reduced padding
+                className="relative w-[100px] flex-shrink-0 p-1 border border-gray-200 dark:border-gray-700 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors flex flex-col justify-between" // Dark-friendly hover
                 onClick={() => navigate(`/store/${product.storeId}?product=${product.productId}`)}
               >
                 <img
@@ -210,7 +210,7 @@ const RecommendedProductsSection: React.FC<RecommendedProductsSectionProps> = ({
                   variant="ghost"
                   size="icon"
                   onClick={(e) => handleToggleFavorite(e, product)}
-                  className="absolute top-1 right-1 h-6 w-6 p-0 rounded-full bg-white/70 hover:bg-white" // Subtle, smaller button
+                  className="absolute top-1 right-1 h-6 w-6 p-0 rounded-full bg-white/70 hover:bg-white dark:bg-black/40 dark:hover:bg-black/50" // Subtle, smaller button with dark-friendly background
                 >
                   <Heart
                     className={cn(
