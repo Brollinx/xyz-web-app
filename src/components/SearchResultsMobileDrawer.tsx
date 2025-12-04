@@ -40,7 +40,7 @@ const SearchResultsMobileDrawer: React.FC<SearchResultsMobileDrawerProps> = ({
     <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen} snapPoints={[0.5, 0.9]}> {/* Starts at 50% height */}
       <DrawerPortal>
         <DrawerOverlay className="fixed inset-0 bg-black/20" /> {/* Subtle overlay */}
-        <DrawerContent className="fixed bottom-0 left-0 right-0 mt-24 flex h-[90%] flex-col rounded-t-[10px] bg-background/90 backdrop-blur-sm"> {/* Semi-transparent background */}
+        <DrawerContent className="fixed bottom-0 left-0 right-0 mt-24 flex h-[85%] flex-col rounded-t-[10px] bg-background/90 backdrop-blur-sm"> {/* Slightly reduced height to ensure ScrollArea can scroll */}
           <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-muted-foreground/50 mt-3" />
           <DrawerHeader className="text-center">
             <DrawerTitle className="text-foreground">Matching Products & Stores</DrawerTitle>
