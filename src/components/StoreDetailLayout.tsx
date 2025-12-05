@@ -12,7 +12,8 @@ import { useFavorites } from "@/hooks/use-favorites";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import FloatingBackButton from "@/components/FloatingBackButton";
 import { MAPBOX_TOKEN } from "@/config";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Added missing import
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 
 interface Product {
   id: string;
@@ -73,6 +74,7 @@ const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
   const layout = useResponsiveLayout();
   const isMobile = layout === "mobile";
   const { isFavorited } = useFavorites();
+  const navigate = useNavigate(); // Initialize useNavigate
 
   const { statusText: storeStatusText, isOpen: isStoreOpen } = getStoreStatus(store.opening_hours);
 
@@ -193,12 +195,13 @@ const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
               </Button>
             </div>
 
-            <div className="divide-y border rounded-md">
+            <div className="divide-y border rounded-md max-h-[300px] overflow-y-auto">
               {filteredProducts.length > 0 ? (
                 filteredProducts.map((product) => (
                   <div
                     key={product.id}
-                    className="flex items-center py-2 px-3 hover:bg-accent/50 transition-colors"
+                    className="flex items-center py-2 px-3 hover:bg-accent/50 transition-colors cursor-pointer"
+                    onClick={() => navigate(`/store/${store.id}?product=${product.id}`)} // Added onClick
                   >
                     <img
                       src={product.image_url || "/placeholder.svg"}

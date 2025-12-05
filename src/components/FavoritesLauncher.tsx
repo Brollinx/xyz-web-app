@@ -10,7 +10,7 @@ const FavoritesLauncher: React.FC = () => {
   return (
     <>
       {/* Floating favorites button */}
-      <div className="fixed z-40 bottom-5 right-5">
+      <div className="fixed z-[999] bottom-5 right-5">
         <FavoritesButton className="h-11 w-11" onClick={() => setOpen(true)} />
       </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,7 +40,7 @@ const FloatingControls: React.FC<FloatingControlsProps> = ({
 
   return (
     <div className={cn(
-      "absolute z-20 w-full flex flex-col items-center p-4 space-y-3", // Added space-y-3 for vertical spacing
+      "absolute z-50 w-full flex flex-col items-center p-4 space-y-3", // Added space-y-3 for vertical spacing
       isMobileView ? "top-0" : "top-4" // Adjust top position for mobile/desktop
     )}>
       {/* Search Bar */}

@@ -22,7 +22,7 @@ const FloatingBackButton: React.FC<FloatingBackButtonProps> = ({ className, fall
   };
 
   return (
-    <div className={className || "fixed top-4 left-16 z-40"}>
+    <div className={className || "fixed top-4 left-16 z-[999]"}>
       <Button
         variant="secondary"
         size="icon"

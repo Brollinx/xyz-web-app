@@ -20,7 +20,7 @@ const FloatingMenu: React.FC = () => {
   const { setTheme } = useTheme();
 
   return (
-    <div className="fixed top-4 left-4 z-40">
+    <div className="fixed top-4 left-4 z-[999]">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
