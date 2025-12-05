@@ -26,7 +26,7 @@ const GlobalBottomSheet: React.FC<GlobalBottomSheetProps> = ({
         <DrawerPortal>
           <DrawerOverlay className="fixed inset-0 bg-black/20 z-40" />
           <DrawerContent className={cn(
-            "fixed bottom-0 left-0 right-0 mt-24 flex h-[85%] flex-col rounded-t-[10px] bg-background z-50", // Changed bg-background/90 to bg-background
+            "fixed bottom-0 left-0 right-0 flex flex-col rounded-t-[10px] bg-background z-50", // Removed mt-24 and h-[85%]
             className
           )}>
             <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-muted-foreground/50 mt-3 mb-2" />
