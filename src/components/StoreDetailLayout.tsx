@@ -195,7 +195,7 @@ const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
               </Button>
             </div>
 
-            <div className="divide-y border rounded-md"> {/* Removed max-h and overflow-y-auto */}
+            <div className="divide-y border rounded-md">
               {filteredProducts.length > 0 ? (
                 filteredProducts.map((product) => (
                   <div
@@ -245,8 +245,7 @@ const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
       <LayoutManager
         mapContent={mapContent}
         sheetContent={sheetContent}
-        isSheetOpen={true} // Store details sheet is always open on mobile
-        sheetSnapPoints={[0.5, 0.9]}
+        // isSheetOpen, onSheetOpenChange, sheetSnapPoints are no longer needed
       />
     </>
   );

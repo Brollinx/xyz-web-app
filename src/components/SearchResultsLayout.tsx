@@ -40,22 +40,17 @@ interface SearchResultsLayoutProps {
 const SearchResultsLayout: React.FC<SearchResultsLayoutProps> = (props) => {
   const layout = useResponsiveLayout();
   const isMobile = layout === "mobile";
-  const [isSheetOpen, setIsSheetOpen] = React.useState(true); // Mobile drawer starts open
+  // isSheetOpen state is no longer needed as GlobalBottomSheet is removed.
 
   const handleMapIconClick = (e: React.MouseEvent, product: any) => {
     e.stopPropagation();
     props.handleMarkerClick(product);
-    if (isMobile) {
-      setIsSheetOpen(true);
-    }
+    // On mobile, the sheet content is now full screen, no need to manage sheet state
   };
 
   const handleProductCardClick = (product: any) => {
     props.setSelectedProductResult(product);
-    if (isMobile) {
-      // Optionally close drawer or just let it be
-      // setIsSheetOpen(false);
-    }
+    // On mobile, the sheet content is now full screen, no need to manage sheet state
   };
 
   const mapContent = (
@@ -109,9 +104,7 @@ const SearchResultsLayout: React.FC<SearchResultsLayoutProps> = (props) => {
         mapContent={mapContent}
         sheetContent={sheetContent}
         floatingControls={floatingControls}
-        isSheetOpen={isSheetOpen}
-        onSheetOpenChange={setIsSheetOpen}
-        sheetSnapPoints={[0.5, 0.9]}
+        // isSheetOpen, onSheetOpenChange, sheetSnapPoints are no longer needed
       />
       <SearchFilterModal
         isOpen={props.isFilterModalOpen}
