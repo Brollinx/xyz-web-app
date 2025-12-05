@@ -41,7 +41,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
         <Input
           type="text"
           placeholder={placeholder}
-          className="flex-grow h-12 pl-12 pr-12 rounded-full border-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent" // Ensure input background is transparent
+          className="flex-grow h-10 pl-12 pr-12 rounded-full border-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent" // Changed h-12 to h-10
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
