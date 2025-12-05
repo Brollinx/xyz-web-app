@@ -76,21 +76,21 @@ const LandingPage = () => {
       <div className="w-full max-w-md flex justify-around space-x-4 pb-8">
         <Button
           variant="ghost"
-          className="flex-1 text-lg py-6 rounded-lg hover:bg-blue-100 transition-colors"
+          className="flex-1 text-lg py-6 rounded-lg transition-colors" // Removed hover:bg-blue-100
           onClick={() => navigate("/nearby-stores")}
         >
           Nearby
         </Button>
         <Button
           variant="ghost"
-          className="flex-1 text-lg py-6 rounded-lg hover:bg-blue-100 transition-colors"
+          className="flex-1 text-lg py-6 rounded-lg transition-colors" // Removed hover:bg-blue-100
           onClick={() => navigate("/featured-products")}
         >
           Featured
         </Button>
         <Button
           variant="ghost"
-          className="flex-1 text-lg py-6 rounded-lg hover:bg-blue-100 transition-colors"
+          className="flex-1 text-lg py-6 rounded-lg transition-colors" // Removed hover:bg-blue-100
           onClick={() => navigate("/login")}
         >
           Login
