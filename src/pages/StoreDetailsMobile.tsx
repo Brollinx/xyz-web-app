@@ -3,7 +3,8 @@
 import React from "react";
 import Map, { Marker, Source, Layer } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import type { Feature, GeoJsonProperties, Geometry, LinePaint } from "geojson";
+import type { Feature, GeoJsonProperties, Geometry } from "geojson"; // LinePaint removed from here
+import type { LinePaint } from "mapbox-gl"; // Correct import for LinePaint
 import StoreIcon from "@/assets/store.svg";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -96,13 +97,15 @@ const StoreDetailsMobile: React.FC<StoreDetailsMobileProps> = ({
 
       {/* Bottom Sheet */}
       <Drawer shouldScaleBackground={false} open={true}> {/* Always open on mobile */}
-        <DrawerContent className="fixed bottom-0 left-0 right-0 mt-24 flex flex-col rounded-t-[10px] bg-background/90 backdrop-blur-sm"
-          style={{ height: '60vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }} // Apply scroll fix
-        >
+        <DrawerContent className="mobile-bottom-sheet bg-background/90 backdrop-blur-sm">
           <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-muted-foreground/50 mt-3 mb-2" />
           <ScrollArea className="flex-1"> {/* flex-1 ensures ScrollArea takes remaining space */}
             {detailsContent}
           </ScrollArea>
+          {/* Temporary visual test overlay */}
+          <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
+            MOBILE BOTTOM SHEET ACTIVE
+          </div>
         </DrawerContent>
       </Drawer>
     </div>
