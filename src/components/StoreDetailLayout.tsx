@@ -195,13 +195,13 @@ const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
               </Button>
             </div>
 
-            <div className="divide-y border rounded-md max-h-[300px] overflow-y-auto">
+            <div className="divide-y border rounded-md"> {/* Removed max-h and overflow-y-auto */}
               {filteredProducts.length > 0 ? (
                 filteredProducts.map((product) => (
                   <div
                     key={product.id}
                     className="flex items-center py-2 px-3 hover:bg-accent/50 transition-colors cursor-pointer"
-                    onClick={() => navigate(`/store/${store.id}?product=${product.id}`)} // Added onClick
+                    onClick={() => navigate(`/store/${store.id}?product=${product.id}`)}
                   >
                     <img
                       src={product.image_url || "/placeholder.svg"}
