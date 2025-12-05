@@ -37,7 +37,7 @@ const ProductCardList: React.FC<ProductCardListProps> = ({
   };
 
   return (
-    <ScrollArea className="h-full w-full">
+    <div className="h-full w-full"> {/* This div now acts as the scrollable container */}
       <div className="p-4 space-y-0">
         {products.length > 0 ? (
           products.map((product) => {
@@ -108,7 +108,7 @@ const ProductCardList: React.FC<ProductCardListProps> = ({
           <p className="text-center text-muted-foreground mt-8 p-4">No matching products or stores found.</p>
         )}
       </div>
-    </ScrollArea>
+    </div>
   );
 };
 

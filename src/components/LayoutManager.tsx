@@ -3,7 +3,7 @@ import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import GlobalMapContainer from "@/components/GlobalMapContainer";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import GlobalBottomSheet from "@/components/GlobalBottomSheet"; // Re-import GlobalBottomSheet
+import GlobalBottomSheet from "@/components/GlobalBottomSheet"; // Import GlobalBottomSheet
 
 interface LayoutManagerProps {
   mapContent: React.ReactNode;
@@ -28,7 +28,7 @@ const LayoutManager: React.FC<LayoutManagerProps> = ({
             {mapContent}
           </div>
           <div className="block md:hidden h-1/2 w-full"> {/* This div acts as the initial space for the drawer */}
-            <GlobalBottomSheet>
+            <GlobalBottomSheet> {/* Use GlobalBottomSheet here for mobile */}
               {sheetContent}
             </GlobalBottomSheet>
           </div>

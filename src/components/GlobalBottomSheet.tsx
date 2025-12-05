@@ -1,26 +1,28 @@
 "use client";
 
 import React from "react";
-import { DrawerContent, DrawerPortal, DrawerOverlay } from "@/components/ui/drawer"; // Keep these from shadcn/ui
-import { Drawer as VaulDrawer } from "@/components/CustomDrawerRoot"; // Import our custom typed Drawer and rename it
+// Import DrawerContent, DrawerPortal, DrawerOverlay from shadcn/ui's drawer.tsx
+// These are generic sub-components that work with either vaul or Radix Dialog.
+import { DrawerContent, DrawerPortal, DrawerOverlay } from "@/components/ui/drawer";
+// Import our custom-typed Drawer root component, aliased to avoid conflict
+import { Drawer as VaulDrawerRoot } from "@/components/CustomDrawerRoot";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 interface GlobalBottomSheetProps {
   children: React.ReactNode;
   className?: string;
-  // isOpen and onOpenChange are managed internally by the Drawer for its draggable behavior
-  // but can be passed if external control is needed for initial mount/unmount.
+  // No isOpen, onOpenChange, snapPoints here. These are passed to VaulDrawerRoot directly.
 }
 
 const GlobalBottomSheet: React.FC<GlobalBottomSheetProps> = ({
   children,
   className,
 }) => {
-  // The Drawer component itself manages its open/close state and snap points
-  // based on user interaction. We set initialSnap to 0.5 (50% height).
+  // This component now *always* renders the vaul-based drawer.
+  // The decision to use this component vs. a desktop sidebar is made in LayoutManager.
   return (
-    <VaulDrawer shouldScaleBackground={false} snapPoints={[0.5, 0.9]} initialSnap={0.5}>
+    <VaulDrawerRoot shouldScaleBackground={false} snapPoints={[0.5, 0.9]} initialSnap={0.5}>
       <DrawerPortal>
         <DrawerOverlay className="fixed inset-0 bg-black/20 z-40" />
         <DrawerContent className={cn(
@@ -34,7 +36,7 @@ const GlobalBottomSheet: React.FC<GlobalBottomSheetProps> = ({
           </ScrollArea>
         </DrawerContent>
       </DrawerPortal>
-    </VaulDrawer>
+    </VaulDrawerRoot>
   );
 };
 
