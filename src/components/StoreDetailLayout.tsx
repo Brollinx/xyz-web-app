@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import LayoutManager from "@/components/LayoutManager";
 import Map, { Marker, Source, Layer } from "react-map-gl";
@@ -14,6 +16,7 @@ import FloatingBackButton from "@/components/FloatingBackButton";
 import { MAPBOX_TOKEN } from "@/config";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom"; // Import useNavigate
+import { ThemeToggle } from "@/components/ThemeToggle"; // Import ThemeToggle for mobile
 
 interface Product {
   id: string;
@@ -118,7 +121,7 @@ const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
   );
 
   const sheetContent = (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-4 bg-background text-foreground"> {/* Ensure theme-adaptive background */}
       {/* Store header info */}
       <div className="text-center md:text-left">
         <h1 className="text-2xl font-bold">{store.store_name}</h1>
@@ -241,11 +244,15 @@ const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
 
   return (
     <>
-      <FloatingBackButton />
+      {isMobile && (
+        <div className="fixed top-4 right-4 z-30"> {/* Floating Theme Toggle for mobile, above the map (z-30) */}
+          <ThemeToggle />
+        </div>
+      )}
+      <FloatingBackButton /> {/* This is already floating and positioned correctly (z-999) */}
       <LayoutManager
         mapContent={mapContent}
         sheetContent={sheetContent}
-        // isSheetOpen, onSheetOpenChange, sheetSnapPoints are no longer needed
       />
     </>
   );

@@ -1,12 +1,17 @@
+"use client";
+
 import React from "react";
 import LayoutManager from "@/components/LayoutManager";
 import SearchResultsMap from "@/components/SearchResultsMap";
 import ProductCardList from "@/components/ProductCardList";
 import SearchFilterModal from "@/components/SearchFilterModal";
-import FloatingControls from "@/components/FloatingControls";
+import SearchBar from "@/components/SearchBar"; // Use SearchBar directly
+import FloatingBackButton from "@/components/FloatingBackButton"; // Import FloatingBackButton
+import { ThemeToggle } from "@/components/ThemeToggle"; // Import ThemeToggle
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { useSearchResultsLogic } from "@/hooks/useSearchResultsLogic";
+import { cn } from "@/lib/utils"; // For z-index
 
 interface SearchResultsLayoutProps {
   // All props from useSearchResultsLogic
@@ -40,17 +45,14 @@ interface SearchResultsLayoutProps {
 const SearchResultsLayout: React.FC<SearchResultsLayoutProps> = (props) => {
   const layout = useResponsiveLayout();
   const isMobile = layout === "mobile";
-  // isSheetOpen state is no longer needed as GlobalBottomSheet is removed.
 
   const handleMapIconClick = (e: React.MouseEvent, product: any) => {
     e.stopPropagation();
     props.handleMarkerClick(product);
-    // On mobile, the sheet content is now full screen, no need to manage sheet state
   };
 
   const handleProductCardClick = (product: any) => {
     props.setSelectedProductResult(product);
-    // On mobile, the sheet content is now full screen, no need to manage sheet state
   };
 
   const mapContent = (
@@ -67,7 +69,40 @@ const SearchResultsLayout: React.FC<SearchResultsLayoutProps> = (props) => {
     />
   );
 
-  const sheetContent = (
+  // Mobile sheet content will now include the SearchBar and Filters
+  const mobileSheetContent = (
+    <div className="p-4 space-y-4 bg-background text-foreground"> {/* Ensure theme-adaptive background */}
+      {/* SEARCH BAR & FILTERS INSIDE BOTTOM SHEET */}
+      <div className="flex flex-col items-center w-full max-w-2xl mx-auto">
+        <SearchBar
+          initialQuery={props.initialSearchQuery}
+          onSearch={props.handleSearch}
+          onOpenFilters={() => props.setIsFilterModalOpen(true)}
+          isFilterActive={props.isFilterActive}
+          placeholder="Search for products..."
+        />
+      </div>
+      <Card className="flex flex-col border-none shadow-none bg-transparent">
+        <CardHeader className="p-2 pb-1">
+          <CardTitle className="text-lg">Matching Products & Stores</CardTitle>
+        </CardHeader>
+        <CardContent className="flex-grow p-0">
+          <ProductCardList
+            products={props.filteredProducts}
+            selectedProductResult={props.selectedProductResult}
+            isFavorited={props.isFavorited}
+            onToggleFavorite={props.handleToggleFavorite}
+            onMapIconClick={handleMapIconClick}
+            isMobileView={isMobile}
+            onProductClick={handleProductCardClick}
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  // Desktop sheet content remains the same
+  const desktopSheetContent = (
     <div className="h-full w-full p-4">
       <Card className="h-full flex flex-col border-none shadow-none bg-transparent">
         <CardHeader className="p-2 pb-1">
@@ -88,23 +123,21 @@ const SearchResultsLayout: React.FC<SearchResultsLayoutProps> = (props) => {
     </div>
   );
 
-  const floatingControls = (
-    <FloatingControls
-      initialSearchQuery={props.initialSearchQuery}
-      onSearch={props.handleSearch}
-      onOpenFilters={() => props.setIsFilterModalOpen(true)}
-      isFilterActive={props.isFilterActive}
-      isMobileView={isMobile}
-    />
-  );
-
   return (
     <>
+      {isMobile && (
+        <>
+          {/* Floating Back Button for mobile, above the map (z-30) */}
+          <FloatingBackButton className="fixed top-4 left-4 z-30" />
+          {/* Floating Theme Toggle for mobile, above the map (z-30) */}
+          <div className="fixed top-4 right-4 z-30">
+            <ThemeToggle />
+          </div>
+        </>
+      )}
       <LayoutManager
         mapContent={mapContent}
-        sheetContent={sheetContent}
-        floatingControls={floatingControls}
-        // isSheetOpen, onSheetOpenChange, sheetSnapPoints are no longer needed
+        sheetContent={isMobile ? mobileSheetContent : desktopSheetContent}
       />
       <SearchFilterModal
         isOpen={props.isFilterModalOpen}
