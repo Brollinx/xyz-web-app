@@ -34,14 +34,14 @@ const SearchBar: React.FC<SearchBarProps> = ({
 
   return (
     <form onSubmit={handleSearchSubmit} className="relative flex items-center w-full max-w-2xl mx-auto">
-      <div className="relative flex items-center w-full rounded-full bg-white shadow-md border border-gray-200">
+      <div className="relative flex items-center w-full rounded-full shadow-md border border-gray-200 bg-background/80 backdrop-blur-sm dark:border-gray-700"> {/* Added transparency and blur */}
         <Button type="submit" variant="ghost" size="icon" className="absolute left-2 text-gray-500 hover:bg-transparent">
           <Search className="h-5 w-5" />
         </Button>
         <Input
           type="text"
           placeholder={placeholder}
-          className="flex-grow h-12 pl-12 pr-12 rounded-full border-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="flex-grow h-12 pl-12 pr-12 rounded-full border-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent" // Ensure input background is transparent
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />

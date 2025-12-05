@@ -118,13 +118,13 @@ const SearchResultsLayout: React.FC<SearchResultsLayoutProps> = (props) => {
       {isMobile && (
         <>
           {/* Floating Back Button for mobile, above the map (z-30) */}
-          <FloatingBackButton className="fixed top-4 left-4 z-30" />
+          <FloatingBackButton className="fixed top-4 left-[60px] z-30" /> {/* Adjusted left position */}
           {/* Floating Theme Toggle for mobile, above the map (z-30) */}
           <div className="fixed top-4 right-4 z-30">
             <ThemeToggle />
           </div>
           {/* Floating Search Bar for mobile, above the map (z-30) */}
-          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-30 w-full max-w-md px-4">
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-30 w-full max-w-[calc(100vw - 160px)] px-4"> {/* Adjusted max-w */}
             <SearchBar
               initialQuery={props.initialSearchQuery}
               onSearch={props.handleSearch}
@@ -134,6 +134,18 @@ const SearchResultsLayout: React.FC<SearchResultsLayoutProps> = (props) => {
             />
           </div>
         </>
+      )}
+      {/* Desktop Search Bar - Rendered for desktop view */}
+      {!isMobile && (
+        <div className="fixed top-4 left-[25%] -translate-x-1/2 z-30 w-full max-w-md"> {/* Positioned for desktop map area */}
+          <SearchBar
+            initialQuery={props.initialSearchQuery}
+            onSearch={props.handleSearch}
+            onOpenFilters={() => props.setIsFilterModalOpen(true)}
+            isFilterActive={props.isFilterActive}
+            placeholder="Search for products..."
+          />
+        </div>
       )}
       <LayoutManager
         mapContent={mapContent}
