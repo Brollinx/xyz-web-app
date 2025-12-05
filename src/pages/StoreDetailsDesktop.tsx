@@ -3,7 +3,8 @@
 import React from "react";
 import Map, { Marker, Source, Layer } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import type { Feature, GeoJsonProperties, Geometry, LinePaint } from "geojson";
+import type { Feature, GeoJsonProperties, Geometry } from "geojson"; // LinePaint removed from here
+import type { LinePaint } from "mapbox-gl"; // Correct import for LinePaint
 import StoreIcon from "@/assets/store.svg";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import FloatingBackButton from "@/components/FloatingBackButton";
