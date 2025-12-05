@@ -117,14 +117,13 @@ const SearchResultsLayout: React.FC<SearchResultsLayoutProps> = (props) => {
     <>
       {isMobile && (
         <>
-          {/* Floating Back Button for mobile, above the map (z-30) */}
-          <FloatingBackButton className="fixed top-4 left-[60px] z-30" />
+          {/* Floating Back Button removed for mobile on SearchResultsPage */}
           {/* Floating Theme Toggle for mobile, above the map (z-30) */}
           <div className="fixed top-4 right-4 z-30">
             <ThemeToggle />
           </div>
           {/* Floating Search Bar for mobile, above the map (z-30) */}
-          <div className="fixed top-4 left-[100px] right-[60px] z-30 max-w-[200px] mx-auto">
+          <div className="fixed top-4 left-[56px] right-[56px] z-30"> {/* Adjusted left/right for alignment */}
             <SearchBar
               initialQuery={props.initialSearchQuery}
               onSearch={props.handleSearch}
