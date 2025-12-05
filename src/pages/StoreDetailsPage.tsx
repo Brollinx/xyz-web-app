@@ -1,24 +1,16 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
-import Map, { Marker, Source, Layer } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import mapboxgl, { LinePaint } from "mapbox-gl";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Loader2, Footprints, Search, Heart, Phone, Clock } from "lucide-react";
+import mapboxgl from "mapbox-gl";
+import { Loader2 } from "lucide-react";
 import { MAPBOX_TOKEN, MAPBOX_LIGHT_STYLE, MAPBOX_DARK_STYLE } from "@/config";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import type { Feature, GeoJsonProperties, Geometry } from "geojson";
-import StoreIcon from "@/assets/store.svg";
 import { addViewedStore } from "@/utils/viewedItems";
 import { useFavorites } from "@/hooks/use-favorites";
-import { cn, getStoreStatus } from "@/lib/utils";
-import { Drawer, DrawerContent } from "@/components/ui/drawer";
-import FloatingBackButton from "@/components/FloatingBackButton";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTheme } from "next-themes";
+import StoreDetailLayout from "@/components/StoreDetailLayout"; // Import the new layout component
 
 const getBounds = (geometry: Geometry) => {
   if (geometry.type !== 'LineString') return null;
@@ -80,7 +72,7 @@ const StoreDetailsPage = () => {
   const [routeGeoJson, setRouteGeoJson] = useState<Feature<Geometry, GeoJsonProperties> | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const { isFavorited, addFavorite, removeFavorite } = useFavorites();
+  const { addFavorite, removeFavorite } = useFavorites();
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const { resolvedTheme } = useTheme();
 
@@ -199,28 +191,17 @@ const StoreDetailsPage = () => {
       toast.error("Store information is missing for this product.");
       return;
     }
-    if (isFavorited(product.id)) {
-      removeFavorite(product.id);
-    } else {
-      addFavorite({
-        product_id: product.id,
-        store_id: store.id,
-        product_name: product.name,
-        price: product.price,
-        image_url: product.image_url,
-        store_name: store.store_name,
-        currency: product.currency,
-        currency_symbol: product.currency_symbol,
-      });
-    }
+    addFavorite({
+      product_id: product.id,
+      store_id: store.id,
+      product_name: product.name,
+      price: product.price,
+      image_url: product.image_url,
+      store_name: store.store_name,
+      currency: product.currency,
+      currency_symbol: product.currency_symbol,
+    });
   };
-
-  const filteredProducts = useMemo(() => {
-    const productsToFilter = allStoreProducts.filter(p => p.id !== selectedProduct?.id);
-    if (!productSearchQuery) return productsToFilter;
-    const lowerCaseQuery = productSearchQuery.toLowerCase();
-    return productsToFilter.filter(product => product.name.toLowerCase().includes(lowerCaseQuery));
-  }, [allStoreProducts, selectedProduct, productSearchQuery]);
 
   if (loading) {
     return (
@@ -233,195 +214,19 @@ const StoreDetailsPage = () => {
 
   if (!store) return <div className="text-center p-8">Could not load store details.</div>;
 
-  const { statusText: storeStatusText, isOpen: isStoreOpen } = getStoreStatus(store.opening_hours);
-
-  const MapSection = (
-    <div className="w-full h-[45vh] md:h-[calc(100vh-160px)] rounded-md overflow-hidden bg-muted">
-      <Map
-        initialViewState={{
-          longitude: store.longitude,
-          latitude: store.latitude,
-          zoom: 14
-        }}
-        style={{ width: "100%", height: "100%" }}
-        mapStyle={mapStyle}
-        mapboxAccessToken={MAPBOX_TOKEN}
-        ref={(instance) => {
-          if (instance) {
-            mapRef.current = instance.getMap();
-          }
-        }}
-      >
-        {userLocation && <Marker longitude={userLocation.lng} latitude={userLocation.lat} color="#4285F4" />}
-        <Marker longitude={store.longitude} latitude={store.latitude}>
-          <img src={StoreIcon} alt="Store" className="h-6 w-6" />
-        </Marker>
-        {routeGeoJson && (
-          <Source id="route" type="geojson" data={routeGeoJson}>
-            <Layer
-              id="route-layer"
-              type="line"
-              paint={{
-                "line-color": "#007cbf",
-                "line-width": 3,
-                "line-join": "round",
-                "line-cap": "round",
-              } as LinePaint}
-            />
-          </Source>
-        )}
-      </Map>
-    </div>
-  );
-
-  const DetailsSection = (
-    <div className="space-y-4">
-      {/* Store header info */}
-      <div className="text-center md:text-left">
-        <h1 className="text-2xl font-bold">{store.store_name}</h1>
-        <p className="text-sm text-muted-foreground">{store.address}</p>
-        {store.opening_hours && (
-          <p className={cn("text-xs font-semibold mt-1 flex items-center justify-center md:justify-start gap-1", isStoreOpen ? "text-green-600" : "text-red-600")}>
-            <Clock className="h-4 w-4" /> {storeStatusText}
-          </p>
-        )}
-        {store.phone_number && (
-          <a href={`tel:${store.phone_number}`} className="text-xs text-blue-600 hover:underline flex items-center justify-center md:justify-start gap-1 mt-1">
-            <Phone className="h-4 w-4" /> {store.phone_number}
-          </a>
-        )}
-      </div>
-
-      {/* Selected Product (compact like search list) */}
-      {selectedProduct && (
-        <Card>
-          <CardHeader><CardTitle>Selected Product</CardTitle></CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-3">
-              <img
-                src={selectedProduct.image_url || "/placeholder.svg"}
-                alt={selectedProduct.name}
-                className="h-16 w-16 object-cover rounded-md flex-shrink-0"
-              />
-              <div className="flex-grow min-w-0">
-                <h2 className="text-base font-bold truncate">{selectedProduct.name}</h2>
-                <div className="flex items-center gap-2 text-xs mt-1">
-                  <span className="font-bold text-green-600 dark:text-green-400">
-                    {selectedProduct.currency_symbol}{selectedProduct.price.toFixed(2)}
-                  </span>
-                  <span className={cn("font-semibold", selectedProduct.stock_quantity > 0 ? "text-green-500" : "text-red-500")}>
-                    {selectedProduct.stock_quantity > 0 ? "In Stock" : "Out of Stock"}
-                  </span>
-                </div>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={(e) => handleToggleFavorite(e, selectedProduct)}
-                className="h-8 w-8 p-0"
-              >
-                <Heart className={cn("h-5 w-5", isFavorited(selectedProduct.id) ? "text-red-500 fill-red-500" : "text-muted-foreground")} />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Walk to Store button */}
-      <div className="flex justify-center items-center">
-        <Button size="sm" variant="outline" onClick={handleWalkToStore} disabled={!userLocation} className="px-4">
-          <Footprints className="mr-2 h-4 w-4" />
-          Walk to Store
-        </Button>
-      </div>
-
-      {/* Other Products + search (compact list style) */}
-      {allStoreProducts.length > 1 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Other Products at {store.store_name}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center space-x-2 mb-3">
-              <Input
-                type="text"
-                placeholder="Search products in this store..."
-                className="flex-grow h-9"
-                value={productSearchQuery}
-                onChange={(e) => setProductSearchQuery(e.target.value)}
-              />
-              <Button type="button" size="icon" variant="secondary" className="h-9 w-9">
-                <Search className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <div className="divide-y border rounded-md">
-              {filteredProducts.length > 0 ? (
-                filteredProducts.map((product) => (
-                  <div
-                    key={product.id}
-                    className="flex items-center py-2 px-3 hover:bg-accent/50 transition-colors"
-                  >
-                    <img
-                      src={product.image_url || "/placeholder.svg"}
-                      alt={product.name}
-                      className="h-16 w-16 object-cover rounded-md flex-shrink-0 mr-3"
-                    />
-                    <div className="flex-grow min-w-0">
-                      <h3 className="font-bold text-base truncate">{product.name}</h3>
-                      <div className="flex items-center flex-wrap gap-x-2 text-xs mt-1">
-                        <span className="font-bold text-green-600 dark:text-green-400">
-                          {product.currency_symbol}{product.price.toFixed(2)}
-                        </span>
-                        <span className={cn("font-semibold", product.stock_quantity > 0 ? "text-green-500" : "text-red-500")}>
-                          {product.stock_quantity > 0 ? "In Stock" : "Out of Stock"}
-                        </span>
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => handleToggleFavorite(e, product)}
-                      className="h-8 w-8 p-0 ml-2"
-                    >
-                      <Heart className={cn("h-5 w-5", isFavorited(product.id) ? "text-red-500 fill-red-500" : "text-muted-foreground")} />
-                    </Button>
-                  </div>
-                ))
-              ) : (
-                <p className="text-center text-muted-foreground py-6">No products found matching your search.</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
-
   return (
-    <div className="min-h-screen bg-background">
-      {/* Mobile: map on top, bottom sheet scrollable */}
-      <div className="md:hidden p-0">
-        <FloatingBackButton />
-        {MapSection}
-        <Drawer shouldScaleBackground={false} open>
-          <DrawerContent className="h-[55vh]">
-            <ScrollArea className="h-full w-full">
-              <div className="p-4 space-y-4">
-                {DetailsSection}
-              </div>
-            </ScrollArea>
-          </DrawerContent>
-        </Drawer>
-      </div>
-
-      {/* Desktop: map left-to-center, details right */}
-      <div className="hidden md:grid md:grid-cols-2 gap-4 p-4">
-        <FloatingBackButton />
-        <div>{MapSection}</div>
-        <div>{DetailsSection}</div>
-      </div>
-    </div>
+    <StoreDetailLayout
+      store={store}
+      selectedProduct={selectedProduct}
+      allStoreProducts={allStoreProducts}
+      productSearchQuery={productSearchQuery}
+      setProductSearchQuery={setProductSearchQuery}
+      userLocation={userLocation}
+      routeGeoJson={routeGeoJson}
+      handleWalkToStore={handleWalkToStore}
+      handleToggleFavorite={handleToggleFavorite}
+      mapStyle={mapStyle}
+    />
   );
 };
 
