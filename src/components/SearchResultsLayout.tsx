@@ -69,19 +69,9 @@ const SearchResultsLayout: React.FC<SearchResultsLayoutProps> = (props) => {
     />
   );
 
-  // Mobile sheet content will now include the SearchBar and Filters
+  // Mobile sheet content will now ONLY contain the product list
   const mobileSheetContent = (
     <div className="p-4 space-y-4 bg-background text-foreground"> {/* Ensure theme-adaptive background */}
-      {/* SEARCH BAR & FILTERS INSIDE BOTTOM SHEET */}
-      <div className="flex flex-col items-center w-full max-w-2xl mx-auto">
-        <SearchBar
-          initialQuery={props.initialSearchQuery}
-          onSearch={props.handleSearch}
-          onOpenFilters={() => props.setIsFilterModalOpen(true)}
-          isFilterActive={props.isFilterActive}
-          placeholder="Search for products..."
-        />
-      </div>
       <Card className="flex flex-col border-none shadow-none bg-transparent">
         <CardHeader className="p-2 pb-1">
           <CardTitle className="text-lg">Matching Products & Stores</CardTitle>
@@ -132,6 +122,16 @@ const SearchResultsLayout: React.FC<SearchResultsLayoutProps> = (props) => {
           {/* Floating Theme Toggle for mobile, above the map (z-30) */}
           <div className="fixed top-4 right-4 z-30">
             <ThemeToggle />
+          </div>
+          {/* Floating Search Bar for mobile, above the map (z-30) */}
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-30 w-full max-w-md px-4">
+            <SearchBar
+              initialQuery={props.initialSearchQuery}
+              onSearch={props.handleSearch}
+              onOpenFilters={() => props.setIsFilterModalOpen(true)}
+              isFilterActive={props.isFilterActive}
+              placeholder="Search for products..."
+            />
           </div>
         </>
       )}
