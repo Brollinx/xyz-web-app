@@ -1,26 +1,20 @@
 import React from "react";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import GlobalMapContainer from "@/components/GlobalMapContainer";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area"; // Import ScrollArea for mobile content
 import { cn } from "@/lib/utils";
-import GlobalBottomSheet from "@/components/GlobalBottomSheet"; // Import the recreated GlobalBottomSheet
 
 interface LayoutManagerProps {
   mapContent: React.ReactNode;
   sheetContent: React.ReactNode;
   floatingControls?: React.ReactNode;
-  isSheetOpen?: boolean; // For mobile drawer control
-  onSheetOpenChange?: (open: boolean) => void; // For mobile drawer control
-  sheetSnapPoints?: number[]; // For mobile drawer snap points
+  // isSheetOpen, onSheetOpenChange, sheetSnapPoints are no longer needed without GlobalBottomSheet
 }
 
 const LayoutManager: React.FC<LayoutManagerProps> = ({
   mapContent,
   sheetContent,
   floatingControls,
-  isSheetOpen,
-  onSheetOpenChange,
-  sheetSnapPoints,
 }) => {
   const layout = useResponsiveLayout();
   const isMobile = layout === "mobile";
@@ -29,18 +23,13 @@ const LayoutManager: React.FC<LayoutManagerProps> = ({
     <div className="relative h-screen w-screen overflow-hidden">
       {isMobile ? (
         <>
-          {/* Mobile: Map in top half, sheet content in bottom half via GlobalBottomSheet */}
-          <GlobalMapContainer className="block md:hidden h-1/2 w-full">
-            {mapContent}
-            {floatingControls} {/* Floating controls over the map */}
-          </GlobalMapContainer>
-          <GlobalBottomSheet
-            isOpen={isSheetOpen}
-            onOpenChange={onSheetOpenChange}
-            snapPoints={sheetSnapPoints}
-          >
-            {sheetContent}
-          </GlobalBottomSheet>
+          {/* Mobile: Map is NOT visible, sheet content is full screen and scrollable */}
+          <div className="block md:hidden w-full h-full overflow-hidden bg-background text-foreground">
+            <ScrollArea className="h-full w-full">
+              {sheetContent}
+            </ScrollArea>
+          </div>
+          {floatingControls}
         </>
       ) : (
         <>

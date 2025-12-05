@@ -75,7 +75,6 @@ const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
   const isMobile = layout === "mobile";
   const { isFavorited } = useFavorites();
   const navigate = useNavigate(); // Initialize useNavigate
-  const [isSheetOpen, setIsSheetOpen] = React.useState(true); // Control for mobile bottom sheet
 
   const { statusText: storeStatusText, isOpen: isStoreOpen } = getStoreStatus(store.opening_hours);
 
