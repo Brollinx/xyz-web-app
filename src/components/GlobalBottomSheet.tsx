@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Drawer as VaulDrawer } from "vaul"; // Import the main Drawer object from vaul with an alias
+import * as Vaul from "vaul"; // Import all exports from vaul under the alias 'Vaul'
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
@@ -16,10 +16,10 @@ const GlobalBottomSheet: React.FC<GlobalBottomSheetProps> = ({
 }) => {
   // This component now exclusively uses vaul's Drawer components for mobile behavior.
   return (
-    <VaulDrawer.Root shouldScaleBackground={false} snapPoints={[0.5, 0.9]} initialSnap={0.5}>
-      <VaulDrawer.Portal>
-        <VaulDrawer.Overlay className="fixed inset-0 bg-black/20 z-40" />
-        <VaulDrawer.Content className={cn(
+    <Vaul.Drawer.Root shouldScaleBackground={false} snapPoints={[0.5, 0.9]} initialSnap={0.5}>
+      <Vaul.Drawer.Portal>
+        <Vaul.Drawer.Overlay className="fixed inset-0 bg-black/20 z-40" />
+        <Vaul.Drawer.Content className={cn(
           "fixed bottom-0 left-0 right-0 flex flex-col rounded-t-[10px] bg-background z-50",
           "h-[var(--vaul-drawer-height)]", // This ensures the height is controlled by snapPoints
           className
@@ -28,9 +28,9 @@ const GlobalBottomSheet: React.FC<GlobalBottomSheetProps> = ({
           <ScrollArea className="flex-1">
             {children}
           </ScrollArea>
-        </VaulDrawer.Content>
-      </VaulDrawer.Portal>
-    </VaulDrawer.Root>
+        </Vaul.Drawer.Content>
+      </Vaul.Drawer.Portal>
+    </Vaul.Drawer.Root>
   );
 };
 
