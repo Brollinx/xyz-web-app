@@ -373,8 +373,8 @@ const RoutePage = () => {
     <div className="flex h-screen">
       <FloatingBackButton />
       <div className="w-[60%] h-full">
-        {/* Desktop: Travel mode buttons moved left towards the map */}
-        <div className="absolute top-4 left-4 z-10">
+        {/* Desktop: Travel mode buttons moved to top-right of the map area */}
+        <div className="absolute top-4 right-4 z-10">
           {travelModeButtons}
         </div>
         {mapComponent}
