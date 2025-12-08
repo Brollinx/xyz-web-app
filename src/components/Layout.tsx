@@ -32,15 +32,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Floating hamburger menu */}
-      <FloatingMenu />
       <FavoritesModalProvider setFavoritesModalOpen={setFavoritesModalOpen}>
+        {/* Floating hamburger menu - now inside the provider */}
+        <FloatingMenu />
         <main className="flex-grow flex flex-col">
           {children}
         </main>
+        {/* Render FavoritesModal here, controlled by context */}
+        <FavoritesModal open={favoritesModalOpen} onOpenChange={setFavoritesModalOpen} />
       </FavoritesModalProvider>
-      {/* Render FavoritesModal here, controlled by context */}
-      <FavoritesModal open={favoritesModalOpen} onOpenChange={setFavoritesModalOpen} />
     </div>
   );
 };
