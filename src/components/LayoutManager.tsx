@@ -21,31 +21,31 @@ const LayoutManager: React.FC<LayoutManagerProps> = ({
   const layout = useResponsiveLayout();
   const isMobile = layout === "mobile";
 
-  // Mobile sheet state
-  const [sheetY, setSheetY] = useState<number>(0); // Y position of the sheet's top edge
-  const [startY, setStartY] = useState<number>(0); // Initial touch Y position
-  const [startSheetY, setStartSheetY] = useState<number>(0); // Sheet Y position at start of touch
-  const [isDraggingSheet, setIsDraggingSheet] = useState(false); // Flag to control sheet dragging
-  const dragHandleRef = useRef<HTMLDivElement>(null); // Ref for the drag handle
-
   // Define snap points dynamically based on window height
-  const SNAP_POINTS = useMemo(() => {
+  const SNAP = useMemo(() => {
     if (typeof window === 'undefined') { // Handle SSR or initial render where window is not available
       return { MINI: 0, MID: 0, FULL: 0 };
     }
     return {
-      MINI: window.innerHeight * 0.82, // 82% from top (mostly closed)
-      MID: window.innerHeight * 0.50, // 50% from top (default open)
       FULL: window.innerHeight * 0.10, // 10% from top (fully open)
+      MID: window.innerHeight * 0.50, // 50% from top (default open)
+      MINI: window.innerHeight * 0.82, // 82% from top (mostly closed)
     };
   }, []);
+
+  // Mobile sheet state
+  const [sheetY, setSheetY] = useState(SNAP.MID); // Y position of the sheet's top edge
+  const [startY, setStartY] = useState(0); // Initial touch Y position
+  const [startSheetY, setStartSheetY] = useState(0); // Sheet Y position at start of touch
+  const [dragging, setDragging] = useState(false); // Flag to control sheet dragging
+  const dragHandleRef = useRef<HTMLDivElement>(null); // Ref for the drag handle
 
   // Set initial sheet position on mount for mobile
   useEffect(() => {
     if (isMobile) {
-      setSheetY(SNAP_POINTS.MID);
+      setSheetY(SNAP.MID);
     }
-  }, [isMobile, SNAP_POINTS]);
+  }, [isMobile, SNAP]);
 
   // Map resize and easeTo effect
   useEffect(() => {
@@ -67,49 +67,43 @@ const LayoutManager: React.FC<LayoutManagerProps> = ({
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (!isMobile) return;
-
-    // Only start dragging the sheet if the touch began on the drag handle
-    const target = e.target as HTMLElement;
-    if (!dragHandleRef.current || !dragHandleRef.current.contains(target)) {
-      setIsDraggingSheet(false); // Ensure dragging is false if not on handle
-      return; // Allow normal scrolling if not on drag handle
-    }
-
-    setIsDraggingSheet(true);
+    setDragging(true);
     setStartY(e.touches[0].clientY);
     setStartSheetY(sheetY);
   }, [isMobile, sheetY]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isMobile || !isDraggingSheet) return; // Only move if sheet dragging is active
+    if (!isMobile || !dragging) return;
     e.preventDefault(); // Prevent default scroll behavior when dragging the sheet
 
     const currentY = e.touches[0].clientY;
-    const deltaY = currentY - startY;
-    let newSheetY = startSheetY + deltaY;
+    const diff = currentY - startY;
+    let newY = startSheetY + diff;
 
     // Clamp dragging between FULL and MINI snap points
-    newSheetY = Math.max(SNAP_POINTS.FULL, Math.min(SNAP_POINTS.MINI, newSheetY));
-    setSheetY(newSheetY);
-  }, [isMobile, isDraggingSheet, startY, startSheetY, SNAP_POINTS]);
+    newY = Math.min(Math.max(newY, SNAP.FULL), SNAP.MINI);
+    setSheetY(newY);
+  }, [isMobile, dragging, startY, startSheetY, SNAP]);
 
   const handleTouchEnd = useCallback(() => {
-    if (!isMobile || !isDraggingSheet) return;
-    setIsDraggingSheet(false); // Reset dragging state
+    if (!isMobile || !dragging) return;
+    setDragging(false);
 
     // Snap to nearest point
-    const distances = {
-      mini: Math.abs(sheetY - SNAP_POINTS.MINI),
-      mid: Math.abs(sheetY - SNAP_POINTS.MID),
-      full: Math.abs(sheetY - SNAP_POINTS.FULL),
-    };
+    const distFull = Math.abs(sheetY - SNAP.FULL);
+    const distMid = Math.abs(sheetY - SNAP.MID);
+    const distMini = Math.abs(sheetY - SNAP.MINI);
 
-    const closestSnapPoint = Object.keys(distances).reduce((a, b) =>
-      distances[a as keyof typeof distances] < distances[b as keyof typeof distances] ? a : b
-    );
+    const minDist = Math.min(distFull, distMid, distMini);
 
-    setSheetY(SNAP_POINTS[closestSnapPoint as keyof typeof SNAP_POINTS]);
-  }, [isMobile, isDraggingSheet, sheetY, SNAP_POINTS]);
+    if (minDist === distFull) {
+      setSheetY(SNAP.FULL);
+    } else if (minDist === distMid) {
+      setSheetY(SNAP.MID);
+    } else {
+      setSheetY(SNAP.MINI);
+    }
+  }, [isMobile, dragging, sheetY, SNAP]);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">
@@ -120,7 +114,7 @@ const LayoutManager: React.FC<LayoutManagerProps> = ({
             className="h-full w-full fixed top-0 left-0 z-10 overflow-hidden"
             style={{
               height: `${sheetY}px`, // Map height is determined by sheet's top position
-              transition: isDraggingSheet ? "none" : "height 0.25s ease",
+              transition: dragging ? "none" : "height 0.25s ease",
             }}
           >
             {mapContent}
@@ -133,18 +127,23 @@ const LayoutManager: React.FC<LayoutManagerProps> = ({
               "border-t-2 border-border", // Add a subtle border to separate from map
             )}
             style={{
-              top: `${sheetY}px`,
-              height: `calc(100vh - ${sheetY}px)`,
-              transition: isDraggingSheet ? "none" : "transform 0.25s ease", // Use transform for smooth movement
+              top: 0, // Sheet starts at the top of the viewport
+              height: "100vh", // Sheet takes full viewport height
+              transform: `translateY(${sheetY}px)`, // Translate it down to sheetY
+              transition: dragging ? "none" : "transform 0.25s ease",
               borderTopLeftRadius: "16px",
               borderTopRightRadius: "16px",
               boxShadow: "0 -6px 20px rgba(0,0,0,0.15)",
             }}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
           >
-            <div ref={dragHandleRef} className="drag-handle" style={{ touchAction: 'none' }} /> {/* Drag handle with ref and touch-action */}
+            <div
+              ref={dragHandleRef}
+              className="drag-handle"
+              style={{ touchAction: 'none' }} // Drag handle with ref and touch-action
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            />
             <ScrollArea className="flex-1 relative h-full"> {/* Ensures ScrollArea takes remaining height and has relative position */}
               {sheetContent}
             </ScrollArea>
