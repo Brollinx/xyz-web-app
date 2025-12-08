@@ -7,7 +7,7 @@ import type { Feature, GeoJsonProperties, Geometry } from "geojson";
 import type { LinePaint } from "mapbox-gl";
 import { Button } from "@/components/ui/button";
 import { Clock, MapPin, Car, Footprints, Bike, Bus, Train } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatDistance } from "@/lib/utils"; // Import formatDistance
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import FloatingBackButton from "@/components/FloatingBackButton";
 import { MAPBOX_TOKEN } from "@/config";
@@ -25,6 +25,7 @@ interface RoutePageLayoutProps {
   setTransportMode: (mode: "driving" | "walking" | "cycling" | "public_transport") => void;
   mapStyle: string;
   mapRef: React.MutableRefObject<mapboxgl.Map | null>;
+  loadingRoute: boolean; // Add loadingRoute prop
 }
 
 const RoutePageLayout: React.FC<RoutePageLayoutProps> = ({
@@ -37,6 +38,7 @@ const RoutePageLayout: React.FC<RoutePageLayoutProps> = ({
   setTransportMode,
   mapStyle,
   mapRef,
+  loadingRoute, // Destructure loadingRoute
 }) => {
   const layout = useResponsiveLayout();
   const isMobile = layout === "mobile";
@@ -93,12 +95,16 @@ const RoutePageLayout: React.FC<RoutePageLayoutProps> = ({
           </div>
           <div className="flex items-center gap-2 text-sm">
             <Clock className="h-4 w-4 text-muted-foreground" />
-            {routeDuration !== null && routeDistance !== null ? (
-              <span>
-                <span className="font-semibold">{Math.round(routeDuration / 60)} min</span> • <span className="font-semibold">{(routeDistance / 1000).toFixed(2)} km</span>
-              </span>
-            ) : (
+            {loadingRoute ? (
               <span className="text-muted-foreground">Calculating route...</span>
+            ) : (
+              routeDuration !== null && routeDistance !== null ? (
+                <span>
+                  <span className="font-semibold">{Math.round(routeDuration / 60)} min</span> • <span className="font-semibold">{formatDistance(routeDistance)}</span>
+                </span>
+              ) : (
+                <span className="text-muted-foreground">Route not available</span>
+              )
             )}
           </div>
         </CardContent>
@@ -151,7 +157,7 @@ const RoutePageLayout: React.FC<RoutePageLayoutProps> = ({
           <FavoritesButton />
         </div>
       )}
-      <FloatingBackButton className="left-16" /> {/* Adjusted left position to avoid overlap with FloatingMenu */}
+      <FloatingBackButton className="left-16" />
       <LayoutManager
         mapContent={mapContent}
         sheetContent={sheetContent}
