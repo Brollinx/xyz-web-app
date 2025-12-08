@@ -99,3 +99,27 @@
     @apply bg-background text-foreground;
   }
 }
+
+.xyz-mobile-sheet {
+  background: rgba(255,255,255,0.98);
+  backdrop-filter: blur(2px);
+}
+
+.dark .xyz-mobile-sheet {
+  background: rgba(35, 39, 47, 0.98); /* Darker background for dark mode */
+}
+
+.xyz-mobile-sheet::before {
+  content: "";
+  position: absolute;
+  top: -12px;
+  left: 0;
+  right: 0;
+  height: 12px;
+  background: rgba(255,255,255,0.98);
+  z-index: -1; /* Ensure it's behind the sheet content */
+}
+
+.dark .xyz-mobile-sheet::before {
+  background: rgba(35, 39, 47, 0.98); /* Darker background for dark mode */
+}

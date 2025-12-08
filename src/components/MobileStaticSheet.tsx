@@ -83,7 +83,7 @@ const MobileStaticSheet: React.FC<MobileStaticSheetProps> = ({ children, classNa
     <div
       className={cn(
         "xyz-mobile-sheet",
-        "fixed left-0 right-0 w-full bg-background z-50 shadow-lg", // Use theme equivalent for background
+        "fixed left-0 right-0 w-full z-50 shadow-lg", // Removed bg-background
         "flex flex-col", // Ensure flex column for drag handle and scroll area
         "border-t-2 border-border", // Add a subtle border to separate from map
         "rounded-t-[16px]",
