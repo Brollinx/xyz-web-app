@@ -73,7 +73,7 @@ const StoreDetailsPage = () => {
   const [loading, setLoading] = useState(true);
 
   const { addFavorite, removeFavorite } = useFavorites();
-  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null); // Create mapRef here
   const { resolvedTheme } = useTheme();
 
   const mapStyle = resolvedTheme === "dark" ? MAPBOX_DARK_STYLE : MAPBOX_LIGHT_STYLE;
@@ -153,7 +153,7 @@ const StoreDetailsPage = () => {
             geometry: route.geometry,
           };
           setRouteGeoJson(newRouteGeoJson);
-          if (mapRef.current && newRouteGeoJson.geometry) {
+          if (mapRef.current && newRouteGeoJson.geometry) { // Use mapRef.current here
             const bounds = getBounds(newRouteGeoJson.geometry);
             if (bounds) {
               mapRef.current.fitBounds(bounds, { padding: 50, duration: 1000 });
@@ -171,7 +171,7 @@ const StoreDetailsPage = () => {
     };
 
     fetchDirections();
-  }, [userLocation, store]);
+  }, [userLocation, store, mapRef]); // Add mapRef to dependencies
 
   const handleWalkToStore = () => {
     if (!store) {
@@ -226,6 +226,7 @@ const StoreDetailsPage = () => {
       handleWalkToStore={handleWalkToStore}
       handleToggleFavorite={handleToggleFavorite}
       mapStyle={mapStyle}
+      mapRef={mapRef} // Pass mapRef
     />
   );
 };

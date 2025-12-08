@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useRef } from "react";
 import LayoutManager from "@/components/LayoutManager";
 import Map, { Marker, Source, Layer } from "react-map-gl";
 import type { Feature, GeoJsonProperties, Geometry } from "geojson";
@@ -17,6 +17,7 @@ import { MAPBOX_TOKEN } from "@/config";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom"; // Import useNavigate
 import { ThemeToggle } from "@/components/ThemeToggle"; // Import ThemeToggle for mobile
+import mapboxgl from "mapbox-gl"; // Import mapboxgl for mapRef type
 
 interface Product {
   id: string;
@@ -60,6 +61,7 @@ interface StoreDetailLayoutProps {
   handleWalkToStore: () => void;
   handleToggleFavorite: (e: React.MouseEvent, product: Product) => void;
   mapStyle: string;
+  mapRef: React.MutableRefObject<mapboxgl.Map | null>; // Add mapRef prop
 }
 
 const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
@@ -73,6 +75,7 @@ const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
   handleWalkToStore,
   handleToggleFavorite,
   mapStyle,
+  mapRef, // Destructure mapRef
 }) => {
   const layout = useResponsiveLayout();
   const isMobile = layout === "mobile";
@@ -98,6 +101,11 @@ const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
       style={{ width: "100%", height: "100%" }}
       mapStyle={mapStyle}
       mapboxAccessToken={MAPBOX_TOKEN}
+      ref={(instance) => {
+        if (instance) {
+          mapRef.current = instance.getMap();
+        }
+      }}
     >
       {userLocation && <Marker longitude={userLocation.lng} latitude={userLocation.lat} color="#4285F4" />}
       <Marker longitude={store.longitude} latitude={store.latitude}>
@@ -253,6 +261,7 @@ const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
       <LayoutManager
         mapContent={mapContent}
         sheetContent={sheetContent}
+        mapRef={mapRef} // Pass mapRef
       />
     </>
   );

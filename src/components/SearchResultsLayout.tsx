@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { useSearchResultsLogic } from "@/hooks/useSearchResultsLogic";
 import { cn } from "@/lib/utils"; // For z-index
+import mapboxgl from "mapbox-gl"; // Import mapboxgl for mapRef type
 
 interface SearchResultsLayoutProps {
   // All props from useSearchResultsLogic
@@ -40,6 +41,7 @@ interface SearchResultsLayoutProps {
   uniqueStoresForMarkers: any[];
   mapStyle: string;
   fitMapToBounds: (mapInstance: any) => void;
+  mapRef: React.MutableRefObject<mapboxgl.Map | null>; // Added mapRef prop
 }
 
 const SearchResultsLayout: React.FC<SearchResultsLayoutProps> = (props) => {
@@ -66,6 +68,7 @@ const SearchResultsLayout: React.FC<SearchResultsLayoutProps> = (props) => {
       onMarkerClick={props.handleMarkerClick}
       filteredProducts={props.filteredProducts}
       fitMapToBounds={props.fitMapToBounds}
+      mapRef={props.mapRef} // Pass mapRef here
     />
   );
 
@@ -149,6 +152,7 @@ const SearchResultsLayout: React.FC<SearchResultsLayoutProps> = (props) => {
       <LayoutManager
         mapContent={mapContent}
         sheetContent={isMobile ? mobileSheetContent : desktopSheetContent}
+        mapRef={props.mapRef} // Pass mapRef here
       />
       <SearchFilterModal
         isOpen={props.isFilterModalOpen}

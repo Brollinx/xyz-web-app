@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect } from "react";
+import React from "react";
 import Map, { Marker, Popup } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import mapboxgl from "mapbox-gl";
@@ -21,6 +21,7 @@ interface SearchResultsMapProps {
   onMarkerClick: (productResult: ProductWithStoreInfo) => void;
   filteredProducts: ProductWithStoreInfo[]; // Needed to find first product in store
   fitMapToBounds: (mapInstance: mapboxgl.Map | null) => void;
+  mapRef: React.MutableRefObject<mapboxgl.Map | null>; // Add mapRef prop
 }
 
 const SearchResultsMap: React.FC<SearchResultsMapProps> = ({
@@ -33,12 +34,12 @@ const SearchResultsMap: React.FC<SearchResultsMapProps> = ({
   onMarkerClick,
   filteredProducts,
   fitMapToBounds,
+  mapRef, // Destructure mapRef
 }) => {
-  const mapRef = useRef<mapboxgl.Map | null>(null);
 
-  useEffect(() => {
-    fitMapToBounds(mapRef.current);
-  }, [fitMapToBounds]);
+  // The fitMapToBounds is still called from useSearchResultsLogic,
+  // but the mapRef is now managed by LayoutManager and passed here.
+  // The internal useEffect for fitting bounds is removed from here.
 
   return (
     <Map
