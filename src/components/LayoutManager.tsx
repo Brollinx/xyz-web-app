@@ -57,9 +57,13 @@ const LayoutManager: React.FC<LayoutManagerProps> = ({
     <div className="relative h-screen w-screen overflow-hidden">
       {isMobile ? (
         <>
-          {/* Mobile: Map container always full screen */}
+          {/* Mobile: Map takes space above the static sheet */}
           <div
-            className="fixed top-0 left-0 right-0 bottom-0 h-screen w-full z-10 overflow-hidden" // Map container z-index is 10
+            className="h-full w-full fixed top-0 left-0 z-10 overflow-hidden" // Map container z-index is 10
+            style={{
+              height: `${currentSheetY}px`, // Map height is determined by sheet's top position
+              transition: "height 0.25s ease", // Smooth transition for map height
+            }}
           >
             {mapContent}
           </div>
