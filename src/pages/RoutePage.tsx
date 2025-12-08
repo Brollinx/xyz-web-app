@@ -3,21 +3,13 @@ import { useSearchParams } from "react-router-dom";
 import Map, { Source, Layer, Marker } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MAPBOX_TOKEN, MAPBOX_LIGHT_STYLE, MAPBOX_DARK_STYLE } from "@/config";
-import { Loader2, Car, Footprints, Phone, Clock } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import type { Feature, GeoJsonProperties, Geometry } from "geojson";
-import StoreIcon from "@/assets/store.svg";
-import NavIcon from "@/assets/nav.svg";
 import mapboxgl, { LinePaint } from "mapbox-gl";
-import { formatDistance, getStoreStatus, calculateDistance, cn } from "@/lib/utils";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { formatDistance } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
-import StoreInfoDisplay from "@/components/StoreInfoDisplay";
-import FloatingBackButton from "@/components/FloatingBackButton";
 import { useTheme } from "next-themes";
-import FavoritesButton from "@/components/FavoritesButton"; // Import FavoritesButton
 import RoutePageLayout from "@/components/RoutePageLayout"; // Import RoutePageLayout
 
 interface OpeningHour {
@@ -70,19 +62,18 @@ const getBounds = (geometry: Geometry) => {
 const RoutePage = () => {
   const { resolvedTheme } = useTheme();
   const [searchParams] = useSearchParams();
-  const isMobile = useIsMobile();
 
   const [storeId, setStoreId] = useState<string | null>(null);
   const [storeDetails, setStoreDetails] = useState<StoreDetails | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [destination, setDestination] = useState<{ lat: number; lng: number } | null>(null);
   
-  const [selectedTravelMode, setSelectedTravelMode] = useState<'driving' | 'walking' | 'cycling' | 'public_transport'>('walking'); // FIX: Updated type
+  const [selectedTravelMode, setSelectedTravelMode] = useState<'driving' | 'walking'>('walking'); // Only driving and walking
   const [walkingRouteSummary, setWalkingRouteSummary] = useState<RouteSummary>({ geojson: null, distance: null, duration: null, error: false });
   const [drivingRouteSummary, setDrivingRouteSummary] = useState<RouteSummary>({ geojson: null, distance: null, duration: null, error: false });
   
   const [loadingInitial, setLoadingInitial] = useState(true);
-  const [loadingRoute, setLoadingRoute] = useState(false); // State to indicate if a route is actively being calculated
+  const [loadingRoute, setLoadingRoute] = useState(false);
   
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -164,7 +155,7 @@ const RoutePage = () => {
     dest: { lat: number; lng: number },
     mode: 'walking' | 'driving'
   ) => {
-    setLoadingRoute(true); // Start loading for this route calculation
+    setLoadingRoute(true);
     if (mode === 'walking') setWalkingRouteSummary(prev => ({ ...prev, error: false }));
     else setDrivingRouteSummary(prev => ({ ...prev, error: false }));
 
@@ -207,7 +198,7 @@ const RoutePage = () => {
       if (mode === 'walking') setWalkingRouteSummary(prev => ({ ...prev, geojson: null, distance: null, duration: null, error: true }));
       else setDrivingRouteSummary(prev => ({ ...prev, geojson: null, distance: null, duration: null, error: true }));
     } finally {
-      setLoadingRoute(false); // End loading for this route calculation
+      setLoadingRoute(false);
       setLoadingInitial(false);
     }
   }, [MAPBOX_TOKEN, selectedTravelMode]);
@@ -218,12 +209,9 @@ const RoutePage = () => {
         clearTimeout(debounceTimeoutRef.current);
       }
       debounceTimeoutRef.current = setTimeout(() => {
-        // Only fetch for 'driving' and 'walking' as Mapbox Directions API supports these profiles directly
-        if (selectedTravelMode === 'driving' || selectedTravelMode === 'walking') {
-          fetchDirections(userLocation, destination, selectedTravelMode);
-        }
+        fetchDirections(userLocation, destination, selectedTravelMode);
         
-        // Also fetch for the other supported mode if not already fetched or errored
+        // Fetch for the other supported mode if not already fetched or errored
         const otherMode = selectedTravelMode === 'walking' ? 'driving' : 'walking';
         const otherModeSummary = otherMode === 'walking' ? walkingRouteSummary : drivingRouteSummary;
         if (!otherModeSummary.geojson && !otherModeSummary.error) {
@@ -233,15 +221,8 @@ const RoutePage = () => {
     }
   }, [userLocation, destination, fetchDirections, selectedTravelMode, walkingRouteSummary, drivingRouteSummary]);
 
-  const handleMapLoad = useCallback((instance: mapboxgl.Map) => {
-    mapRef.current = instance;
-  }, []);
-
   const currentRouteSummary = selectedTravelMode === 'walking' ? walkingRouteSummary : drivingRouteSummary;
   const currentRouteGeoJson = currentRouteSummary.geojson;
-
-  const formattedDistance = currentRouteSummary.distance !== null ? formatDistance(currentRouteSummary.distance) : null;
-  const formattedDuration = currentRouteSummary.duration !== null ? `${Math.round(currentRouteSummary.duration / 60)} min` : null;
 
   if (loadingInitial || !storeDetails || !destination) {
     return (
@@ -256,6 +237,7 @@ const RoutePage = () => {
     <RoutePageLayout
       origin={{ lat: userLocation?.lat || 0, lng: userLocation?.lng || 0, name: "Your Location" }}
       destination={{ lat: destination.lat, lng: destination.lng, name: storeDetails.store_name }}
+      storeDetails={storeDetails} // Pass storeDetails
       routeGeoJson={currentRouteGeoJson}
       routeDuration={currentRouteSummary.duration}
       routeDistance={currentRouteSummary.distance}
@@ -263,7 +245,7 @@ const RoutePage = () => {
       setTransportMode={setSelectedTravelMode}
       mapStyle={resolvedTheme === "dark" ? MAPBOX_DARK_STYLE : MAPBOX_LIGHT_STYLE}
       mapRef={mapRef}
-      loadingRoute={loadingRoute} // Pass loadingRoute state
+      loadingRoute={loadingRoute}
     />
   );
 };

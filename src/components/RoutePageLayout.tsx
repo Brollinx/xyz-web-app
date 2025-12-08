@@ -6,31 +6,49 @@ import Map, { Marker, Source, Layer } from "react-map-gl";
 import type { Feature, GeoJsonProperties, Geometry } from "geojson";
 import type { LinePaint } from "mapbox-gl";
 import { Button } from "@/components/ui/button";
-import { Clock, MapPin, Car, Footprints, Bike, Bus, Train } from "lucide-react";
-import { cn, formatDistance } from "@/lib/utils"; // Import formatDistance
+import { Clock, MapPin, Car, Footprints, Phone } from "lucide-react"; // Removed Bike, Bus, Train
+import { cn, formatDistance } from "@/lib/utils";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import FloatingBackButton from "@/components/FloatingBackButton";
 import { MAPBOX_TOKEN } from "@/config";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import mapboxgl from "mapbox-gl";
-import FavoritesButton from "@/components/FavoritesButton"; // Import FavoritesButton
+import FavoritesButton from "@/components/FavoritesButton";
+
+interface OpeningHour {
+  day: string;
+  open: string;
+  close: string;
+}
+
+interface StoreDetails {
+  id: string;
+  store_name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  opening_hours: OpeningHour[] | null;
+  phone_number?: string;
+}
 
 interface RoutePageLayoutProps {
   origin: { lat: number; lng: number; name: string };
   destination: { lat: number; lng: number; name: string };
+  storeDetails: StoreDetails; // Added storeDetails prop
   routeGeoJson: Feature<Geometry, GeoJsonProperties> | null;
   routeDuration: number | null;
   routeDistance: number | null;
-  transportMode: "driving" | "walking" | "cycling" | "public_transport";
-  setTransportMode: (mode: "driving" | "walking" | "cycling" | "public_transport") => void;
+  transportMode: "driving" | "walking"; // Only driving and walking
+  setTransportMode: (mode: "driving" | "walking") => void; // Only driving and walking
   mapStyle: string;
   mapRef: React.MutableRefObject<mapboxgl.Map | null>;
-  loadingRoute: boolean; // Add loadingRoute prop
+  loadingRoute: boolean;
 }
 
 const RoutePageLayout: React.FC<RoutePageLayoutProps> = ({
   origin,
   destination,
+  storeDetails, // Destructure storeDetails
   routeGeoJson,
   routeDuration,
   routeDistance,
@@ -38,7 +56,7 @@ const RoutePageLayout: React.FC<RoutePageLayoutProps> = ({
   setTransportMode,
   mapStyle,
   mapRef,
-  loadingRoute, // Destructure loadingRoute
+  loadingRoute,
 }) => {
   const layout = useResponsiveLayout();
   const isMobile = layout === "mobile";
@@ -79,21 +97,35 @@ const RoutePageLayout: React.FC<RoutePageLayoutProps> = ({
   );
 
   const sheetContent = (
-    <div className="pt-2 px-4 pb-4 space-y-4 bg-background text-foreground">
+    <div className="p-2 space-y-2 bg-background text-foreground"> {/* Reduced padding and spacing */}
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Route Details</CardTitle>
+        <CardHeader className="pb-1 pt-2"> {/* Reduced padding */}
+          <CardTitle className="text-base">Route Details</CardTitle> {/* Reduced font size */}
         </CardHeader>
-        <CardContent className="space-y-2">
-          <div className="flex items-center gap-2 text-sm">
+        <CardContent className="space-y-1 text-sm"> {/* Reduced spacing and font size */}
+          <div className="flex items-center gap-2">
             <MapPin className="h-4 w-4 text-muted-foreground" />
             <span className="font-semibold">From:</span> {origin.name}
           </div>
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-2">
             <MapPin className="h-4 w-4 text-muted-foreground" />
-            <span className="font-semibold">To:</span> {destination.name}
+            <span className="font-semibold">To:</span> <span className="font-bold">{destination.name}</span>
           </div>
-          <div className="flex items-center gap-2 text-sm">
+          {storeDetails.address && (
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">{storeDetails.address}</span>
+            </div>
+          )}
+          {storeDetails.phone_number && (
+            <div className="flex items-center gap-2">
+              <Phone className="h-4 w-4 text-muted-foreground" />
+              <a href={`tel:${storeDetails.phone_number}`} className="text-blue-600 hover:underline">
+                {storeDetails.phone_number}
+              </a>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-muted-foreground" />
             {loadingRoute ? (
               <span className="text-muted-foreground">Calculating route...</span>
@@ -111,38 +143,24 @@ const RoutePageLayout: React.FC<RoutePageLayoutProps> = ({
       </Card>
 
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Travel Mode</CardTitle>
+        <CardHeader className="pb-1 pt-2"> {/* Reduced padding */}
+          <CardTitle className="text-base">Travel Mode</CardTitle> {/* Reduced font size */}
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 gap-2"> {/* Changed to grid-cols-2 */}
             <Button
               variant={transportMode === "driving" ? "default" : "outline"}
               onClick={() => setTransportMode("driving")}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 text-sm h-9" // Reduced height and font size
             >
               <Car className="h-4 w-4" /> Driving
             </Button>
             <Button
               variant={transportMode === "walking" ? "default" : "outline"}
               onClick={() => setTransportMode("walking")}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 text-sm h-9" // Reduced height and font size
             >
               <Footprints className="h-4 w-4" /> Walking
-            </Button>
-            <Button
-              variant={transportMode === "cycling" ? "default" : "outline"}
-              onClick={() => setTransportMode("cycling")}
-              className="flex items-center gap-2"
-            >
-              <Bike className="h-4 w-4" /> Cycling
-            </Button>
-            <Button
-              variant={transportMode === "public_transport" ? "default" : "outline"}
-              onClick={() => setTransportMode("public_transport")}
-              className="flex items-center gap-2"
-            >
-              <Bus className="h-4 w-4" /> Public Transport
             </Button>
           </div>
         </CardContent>
