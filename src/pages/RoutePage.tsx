@@ -110,7 +110,7 @@ const RoutePage = () => {
         if (debounceTimeoutRef.current) {
           clearTimeout(debounceTimeoutRef.current);
         }
-      }; // Corrected syntax here
+      };
     } else {
       toast.error("Geolocation is not supported by your browser.");
       setLoadingInitial(false);
@@ -346,15 +346,14 @@ const RoutePage = () => {
     return (
       <div className="relative flex flex-col h-screen">
         <FloatingBackButton />
-        {/* Travel mode buttons moved back to center, below back button */}
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-20">
+        {/* Mobile: Travel mode buttons on the same line as back button, to the right */}
+        <div className="fixed top-4 right-4 z-20">
           {travelModeButtons}
         </div>
         <div className="relative h-[75vh] w-full rounded-t-lg overflow-hidden">
           {mapComponent}
         </div>
         <div className="fixed bottom-0 left-0 right-0 h-[25vh] bg-card text-card-foreground rounded-t-2xl shadow-lg p-4 overflow-y-auto transition-transform duration-300 ease-out">
-          {/* Removed justify-center and h-full to allow p-4 to work */}
           <div className="flex flex-col items-center"> 
             {loadingRoute && (
               <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
@@ -374,7 +373,8 @@ const RoutePage = () => {
     <div className="flex h-screen">
       <FloatingBackButton />
       <div className="w-[60%] h-full">
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
+        {/* Desktop: Travel mode buttons moved left towards the map */}
+        <div className="absolute top-4 left-4 z-10">
           {travelModeButtons}
         </div>
         {mapComponent}
