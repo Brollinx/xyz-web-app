@@ -25,7 +25,8 @@ const LayoutManager: React.FC<LayoutManagerProps> = ({
   const [sheetY, setSheetY] = useState<number>(0); // Y position of the sheet's top edge
   const [startY, setStartY] = useState<number>(0); // Initial touch Y position
   const [startSheetY, setStartSheetY] = useState<number>(0); // Sheet Y position at start of touch
-  const [dragging, setDragging] = useState(false);
+  const [isDraggingSheet, setIsDraggingSheet] = useState(false); // Flag to control sheet dragging
+  const dragHandleRef = useRef<HTMLDivElement>(null); // Ref for the drag handle
 
   // Define snap points dynamically based on window height
   const SNAP_POINTS = useMemo(() => {
@@ -66,13 +67,21 @@ const LayoutManager: React.FC<LayoutManagerProps> = ({
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (!isMobile) return;
-    setDragging(true);
-    setStartY(e.touches[0].clientY);
-    setStartSheetY(sheetY);
+
+    // Only start dragging the sheet if the touch began on the drag handle
+    if (dragHandleRef.current && dragHandleRef.current.contains(e.target as Node)) {
+      setIsDraggingSheet(true);
+      setStartY(e.touches[0].clientY);
+      setStartSheetY(sheetY);
+    } else {
+      setIsDraggingSheet(false); // Allow normal scrolling if not on drag handle
+    }
   }, [isMobile, sheetY]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isMobile || !dragging) return;
+    if (!isMobile || !isDraggingSheet) return; // Only move if sheet dragging is active
+    e.preventDefault(); // Prevent default scroll behavior when dragging the sheet
+
     const currentY = e.touches[0].clientY;
     const deltaY = currentY - startY;
     let newSheetY = startSheetY + deltaY;
@@ -80,11 +89,11 @@ const LayoutManager: React.FC<LayoutManagerProps> = ({
     // Clamp dragging between FULL and MINI snap points
     newSheetY = Math.max(SNAP_POINTS.FULL, Math.min(SNAP_POINTS.MINI, newSheetY));
     setSheetY(newSheetY);
-  }, [isMobile, dragging, startY, startSheetY, SNAP_POINTS]);
+  }, [isMobile, isDraggingSheet, startY, startSheetY, SNAP_POINTS]);
 
   const handleTouchEnd = useCallback(() => {
-    if (!isMobile || !dragging) return;
-    setDragging(false);
+    if (!isMobile || !isDraggingSheet) return;
+    setIsDraggingSheet(false); // Reset dragging state
 
     // Snap to nearest point
     const distances = {
@@ -98,7 +107,7 @@ const LayoutManager: React.FC<LayoutManagerProps> = ({
     );
 
     setSheetY(SNAP_POINTS[closestSnapPoint as keyof typeof SNAP_POINTS]);
-  }, [isMobile, dragging, sheetY, SNAP_POINTS]);
+  }, [isMobile, isDraggingSheet, sheetY, SNAP_POINTS]);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">
@@ -109,7 +118,7 @@ const LayoutManager: React.FC<LayoutManagerProps> = ({
             className="h-full w-full fixed top-0 left-0 z-10 overflow-hidden"
             style={{
               height: `${sheetY}px`, // Map height is determined by sheet's top position
-              transition: dragging ? "none" : "height 0.25s ease",
+              transition: isDraggingSheet ? "none" : "height 0.25s ease",
             }}
           >
             {mapContent}
@@ -124,7 +133,7 @@ const LayoutManager: React.FC<LayoutManagerProps> = ({
             style={{
               top: `${sheetY}px`,
               height: `calc(100vh - ${sheetY}px)`,
-              transition: dragging ? "none" : "transform 0.25s ease", // Use transform for smooth movement
+              transition: isDraggingSheet ? "none" : "transform 0.25s ease", // Use transform for smooth movement
               borderTopLeftRadius: "16px",
               borderTopRightRadius: "16px",
               boxShadow: "0 -6px 20px rgba(0,0,0,0.15)",
@@ -133,8 +142,8 @@ const LayoutManager: React.FC<LayoutManagerProps> = ({
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
           >
-            <div className="drag-handle" /> {/* Drag handle */}
-            <ScrollArea className="flex-1"> {/* Ensures ScrollArea takes remaining height */}
+            <div ref={dragHandleRef} className="drag-handle" /> {/* Drag handle with ref */}
+            <ScrollArea className="flex-1 relative h-full"> {/* Ensures ScrollArea takes remaining height and has relative position */}
               {sheetContent}
             </ScrollArea>
           </div>
