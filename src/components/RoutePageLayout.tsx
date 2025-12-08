@@ -6,7 +6,7 @@ import Map, { Marker, Source, Layer } from "react-map-gl";
 import type { Feature, GeoJsonProperties, Geometry } from "geojson";
 import type { LinePaint } from "mapbox-gl";
 import { Button } from "@/components/ui/button";
-import { Clock, MapPin, Car, Footprints, Bike, Bus, Train } from "lucide-react"; // Changed Walk to Footprints
+import { Clock, MapPin, Car, Footprints, Bike, Bus, Train } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import FloatingBackButton from "@/components/FloatingBackButton";
@@ -91,18 +91,16 @@ const RoutePageLayout: React.FC<RoutePageLayoutProps> = ({
             <MapPin className="h-4 w-4 text-muted-foreground" />
             <span className="font-semibold">To:</span> {destination.name}
           </div>
-          {routeDuration !== null && routeDistance !== null && (
-            <>
-              <div className="flex items-center gap-2 text-sm">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <span className="font-semibold">Duration:</span> {Math.round(routeDuration / 60)} mins
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Car className="h-4 w-4 text-muted-foreground" /> {/* Using Car icon as a generic distance icon */}
-                <span className="font-semibold">Distance:</span> {(routeDistance / 1000).toFixed(2)} km
-              </div>
-            </>
-          )}
+          <div className="flex items-center gap-2 text-sm">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            {routeDuration !== null && routeDistance !== null ? (
+              <span>
+                <span className="font-semibold">{Math.round(routeDuration / 60)} min</span> • <span className="font-semibold">{(routeDistance / 1000).toFixed(2)} km</span>
+              </span>
+            ) : (
+              <span className="text-muted-foreground">Calculating route...</span>
+            )}
+          </div>
         </CardContent>
       </Card>
 
