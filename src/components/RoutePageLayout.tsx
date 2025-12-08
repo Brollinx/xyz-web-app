@@ -6,7 +6,7 @@ import Map, { Marker, Source, Layer } from "react-map-gl";
 import type { Feature, GeoJsonProperties, Geometry } from "geojson";
 import type { LinePaint } from "mapbox-gl";
 import { Button } from "@/components/ui/button";
-import { Clock, MapPin, Car, Footprints, Phone } from "lucide-react"; // Removed Bike, Bus, Train
+import { Clock, MapPin, Car, Footprints, Phone } from "lucide-react";
 import { cn, formatDistance } from "@/lib/utils";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import FloatingBackButton from "@/components/FloatingBackButton";
@@ -34,12 +34,12 @@ interface StoreDetails {
 interface RoutePageLayoutProps {
   origin: { lat: number; lng: number; name: string };
   destination: { lat: number; lng: number; name: string };
-  storeDetails: StoreDetails; // Added storeDetails prop
+  storeDetails: StoreDetails;
   routeGeoJson: Feature<Geometry, GeoJsonProperties> | null;
   routeDuration: number | null;
   routeDistance: number | null;
-  transportMode: "driving" | "walking"; // Only driving and walking
-  setTransportMode: (mode: "driving" | "walking") => void; // Only driving and walking
+  transportMode: "driving" | "walking";
+  setTransportMode: (mode: "driving" | "walking") => void;
   mapStyle: string;
   mapRef: React.MutableRefObject<mapboxgl.Map | null>;
   loadingRoute: boolean;
@@ -48,7 +48,7 @@ interface RoutePageLayoutProps {
 const RoutePageLayout: React.FC<RoutePageLayoutProps> = ({
   origin,
   destination,
-  storeDetails, // Destructure storeDetails
+  storeDetails,
   routeGeoJson,
   routeDuration,
   routeDistance,
@@ -97,7 +97,7 @@ const RoutePageLayout: React.FC<RoutePageLayoutProps> = ({
   );
 
   const sheetContent = (
-    <div className="p-2 space-y-2 bg-background text-foreground"> {/* Reduced padding and spacing */}
+    <div className="p-2 space-y-1 bg-background text-foreground"> {/* Reduced overall padding and spacing */}
       <Card>
         <CardHeader className="pb-1 pt-2"> {/* Reduced padding */}
           <CardTitle className="text-base">Route Details</CardTitle> {/* Reduced font size */}
@@ -139,26 +139,19 @@ const RoutePageLayout: React.FC<RoutePageLayoutProps> = ({
               )
             )}
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-1 pt-2"> {/* Reduced padding */}
-          <CardTitle className="text-base">Travel Mode</CardTitle> {/* Reduced font size */}
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-2"> {/* Changed to grid-cols-2 */}
+          {/* Travel Mode Buttons - moved here */}
+          <div className="grid grid-cols-2 gap-2 mt-2"> {/* Added mt-2 for spacing */}
             <Button
               variant={transportMode === "driving" ? "default" : "outline"}
               onClick={() => setTransportMode("driving")}
-              className="flex items-center gap-2 text-sm h-9" // Reduced height and font size
+              className="flex items-center gap-2 text-sm h-9"
             >
               <Car className="h-4 w-4" /> Driving
             </Button>
             <Button
               variant={transportMode === "walking" ? "default" : "outline"}
               onClick={() => setTransportMode("walking")}
-              className="flex items-center gap-2 text-sm h-9" // Reduced height and font size
+              className="flex items-center gap-2 text-sm h-9"
             >
               <Footprints className="h-4 w-4" /> Walking
             </Button>
