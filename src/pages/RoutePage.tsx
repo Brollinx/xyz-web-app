@@ -11,10 +11,10 @@ import type { Feature, GeoJsonProperties, Geometry } from "geojson";
 import StoreIcon from "@/assets/store.svg";
 import NavIcon from "@/assets/nav.svg";
 import mapboxgl, { LinePaint } from "mapbox-gl";
-import { formatDistance, getStoreStatus, calculateDistance, cn } from "@/lib/utils"; // Import formatDistance, getStoreStatus, calculateDistance, cn
-import { useIsMobile } from "@/hooks/use-mobile"; // Import useIsMobile hook
-import { supabase } from "@/lib/supabase"; // Import supabase client
-import StoreInfoDisplay from "@/components/StoreInfoDisplay"; // Import new component
+import { formatDistance, getStoreStatus, calculateDistance, cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { supabase } from "@/lib/supabase";
+import StoreInfoDisplay from "@/components/StoreInfoDisplay";
 import FloatingBackButton from "@/components/FloatingBackButton";
 import { useTheme } from "next-themes";
 
@@ -36,12 +36,11 @@ interface StoreDetails {
 
 interface RouteSummary {
   geojson: Feature<Geometry, GeoJsonProperties> | null;
-  distance: number | null; // Store raw distance in meters
-  duration: number | null; // Store raw duration in seconds
+  distance: number | null;
+  duration: number | null;
   error: boolean;
 }
 
-// Helper function to calculate bounding box from GeoJSON LineString
 const getBounds = (geometry: Geometry) => {
   if (geometry.type !== 'LineString') {
     return null;
@@ -80,13 +79,12 @@ const RoutePage = () => {
   const [walkingRouteSummary, setWalkingRouteSummary] = useState<RouteSummary>({ geojson: null, distance: null, duration: null, error: false });
   const [drivingRouteSummary, setDrivingRouteSummary] = useState<RouteSummary>({ geojson: null, distance: null, duration: null, error: false });
   
-  const [loadingInitial, setLoadingInitial] = useState(true); // For initial page load
-  const [loadingRoute, setLoadingRoute] = useState(false); // For active route fetching
+  const [loadingInitial, setLoadingInitial] = useState(true);
+  const [loadingRoute, setLoadingRoute] = useState(false);
   
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Effect for continuous user location tracking
   useEffect(() => {
     if (navigator.geolocation) {
       const watchId = navigator.geolocation.watchPosition(
@@ -96,7 +94,6 @@ const RoutePage = () => {
             lng: position.coords.longitude,
           };
           setUserLocation(newLocation);
-          // Only fly to user location if map is not already focused on a route
           if (mapRef.current && !walkingRouteSummary.geojson && !drivingRouteSummary.geojson) {
             mapRef.current.flyTo({ center: [newLocation.lng, newLocation.lat], zoom: 15, speed: 1.2 });
           }
@@ -105,7 +102,7 @@ const RoutePage = () => {
           console.error("Error watching user location:", error);
           toast.error("Could not track your location. Please check permissions.");
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 1000 } // Ensure high accuracy
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 1000 }
       );
 
       return () => {
@@ -118,9 +115,8 @@ const RoutePage = () => {
       toast.error("Geolocation is not supported by your browser.");
       setLoadingInitial(false);
     }
-  }, [walkingRouteSummary.geojson, drivingRouteSummary.geojson]); // Depend on routeGeoJson to avoid flying when route is present
+  }, [walkingRouteSummary.geojson, drivingRouteSummary.geojson]);
 
-  // Effect to get destination and storeId from search parameters and fetch store details
   useEffect(() => {
     const id = searchParams.get("storeId");
     const destLat = searchParams.get("lat");
@@ -141,7 +137,6 @@ const RoutePage = () => {
     }
   }, [searchParams]);
 
-  // Fetch store details once storeId is available
   useEffect(() => {
     const fetchStoreDetails = async () => {
       if (!storeId) return;
@@ -162,14 +157,12 @@ const RoutePage = () => {
     fetchStoreDetails();
   }, [storeId]);
 
-  // Debounced function to fetch directions
   const fetchDirections = useCallback(async (
     origin: { lat: number; lng: number },
     dest: { lat: number; lng: number },
     mode: 'walking' | 'driving'
   ) => {
     setLoadingRoute(true);
-    // Reset error for the mode being fetched
     if (mode === 'walking') setWalkingRouteSummary(prev => ({ ...prev, error: false }));
     else setDrivingRouteSummary(prev => ({ ...prev, error: false }));
 
@@ -196,7 +189,6 @@ const RoutePage = () => {
           setDrivingRouteSummary(newSummary);
         }
 
-        // Fit map to route bounds if this is the currently selected mode
         if (selectedTravelMode === mode && mapRef.current && newRouteGeoJson.geometry) {
           const bounds = getBounds(newRouteGeoJson.geometry);
           if (bounds) {
@@ -204,42 +196,37 @@ const RoutePage = () => {
           }
         }
       } else {
-        // No route found, set error state but don't show toast here
         if (mode === 'walking') setWalkingRouteSummary(prev => ({ ...prev, geojson: null, distance: null, duration: null, error: true }));
         else setDrivingRouteSummary(prev => ({ ...prev, geojson: null, distance: null, duration: null, error: true }));
       }
     } catch (error) {
       console.error(`Error fetching ${mode} directions:`, error);
-      toast.error(`Failed to fetch ${mode} directions due to a network error.`); // Keep toast for network errors
+      toast.error(`Failed to fetch ${mode} directions due to a network error.`);
       if (mode === 'walking') setWalkingRouteSummary(prev => ({ ...prev, geojson: null, distance: null, duration: null, error: true }));
       else setDrivingRouteSummary(prev => ({ ...prev, geojson: null, distance: null, duration: null, error: true }));
     } finally {
       setLoadingRoute(false);
-      setLoadingInitial(false); // Ensure initial loading is false after first fetch attempt
+      setLoadingInitial(false);
     }
   }, [MAPBOX_TOKEN, selectedTravelMode]);
 
-  // Effect to trigger debounced fetch directions when userLocation or destination changes
   useEffect(() => {
     if (userLocation && destination) {
       if (debounceTimeoutRef.current) {
         clearTimeout(debounceTimeoutRef.current);
       }
       debounceTimeoutRef.current = setTimeout(() => {
-        // Fetch for the currently selected mode
         fetchDirections(userLocation, destination, selectedTravelMode);
         
-        // Also fetch for the other mode in the background if not already successful or errored
         const otherMode = selectedTravelMode === 'walking' ? 'driving' : 'walking';
         const otherModeSummary = otherMode === 'walking' ? walkingRouteSummary : drivingRouteSummary;
         if (!otherModeSummary.geojson && !otherModeSummary.error) {
           fetchDirections(userLocation, destination, otherMode);
         }
-      }, 2000); // Debounce for 2 seconds
+      }, 2000);
     }
   }, [userLocation, destination, fetchDirections, selectedTravelMode, walkingRouteSummary, drivingRouteSummary]);
 
-  // Callback for map load to update debug state
   const handleMapLoad = useCallback((instance: mapboxgl.Map) => {
     mapRef.current = instance;
   }, []);
@@ -305,6 +292,7 @@ const RoutePage = () => {
   const travelModeButtons = (
     <div className="flex gap-2">
       <Button
+        size="sm" // Reduced size
         variant={selectedTravelMode === 'walking' ? 'default' : 'outline'}
         onClick={() => setSelectedTravelMode('walking')}
         disabled={loadingRoute && selectedTravelMode === 'walking'}
@@ -313,6 +301,7 @@ const RoutePage = () => {
         Walk {walkingRouteSummary.duration !== null ? `(${Math.round(walkingRouteSummary.duration / 60)} min)` : ''}
       </Button>
       <Button
+        size="sm" // Reduced size
         variant={selectedTravelMode === 'driving' ? 'default' : 'outline'}
         onClick={() => setSelectedTravelMode('driving')}
         disabled={loadingRoute && selectedTravelMode === 'driving'}
@@ -357,10 +346,11 @@ const RoutePage = () => {
     return (
       <div className="relative flex flex-col h-screen">
         <FloatingBackButton />
+        {/* New fixed container for travel mode buttons on mobile */}
+        <div className="fixed top-4 right-4 z-20">
+          {travelModeButtons}
+        </div>
         <div className="relative h-[75vh] w-full rounded-t-lg overflow-hidden">
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
-            {travelModeButtons}
-          </div>
           {mapComponent}
         </div>
         <div className="fixed bottom-0 left-0 right-0 h-[25vh] bg-card text-card-foreground rounded-t-2xl shadow-lg p-4 overflow-y-auto transition-transform duration-300 ease-out">
