@@ -17,6 +17,7 @@ import { supabase } from "@/lib/supabase";
 import StoreInfoDisplay from "@/components/StoreInfoDisplay";
 import FloatingBackButton from "@/components/FloatingBackButton";
 import { useTheme } from "next-themes";
+import FavoritesButton from "@/components/FavoritesButton"; // Import FavoritesButton
 
 interface OpeningHour {
   day: string;
@@ -346,9 +347,9 @@ const RoutePage = () => {
     return (
       <div className="relative flex flex-col h-screen">
         <FloatingBackButton />
-        {/* Mobile: Travel mode buttons on the same line as back button, to the right */}
+        {/* Mobile: Favorites button in the top-right corner */}
         <div className="fixed top-4 right-4 z-20">
-          {travelModeButtons}
+          <FavoritesButton />
         </div>
         <div className="relative h-[75vh] w-full rounded-t-lg overflow-hidden">
           {mapComponent}
@@ -363,6 +364,10 @@ const RoutePage = () => {
             )}
             {storeInfoDisplay}
             {googleMapsFallbackButton}
+            {/* Mobile: Travel mode buttons moved to the bottom sheet */}
+            <div className="mt-4">
+              {travelModeButtons}
+            </div>
           </div>
         </div>
       </div>
@@ -375,7 +380,7 @@ const RoutePage = () => {
       <div className="w-[60%] h-full">
         {mapComponent}
       </div>
-      {/* Desktop: Travel mode buttons moved to top-right of the map area, fixed relative to viewport */}
+      {/* Desktop: Travel mode buttons remain in the top-right of the map area */}
       <div className="fixed top-4 z-10" style={{ right: 'calc(40% + 16px)' }}>
         {travelModeButtons}
       </div>

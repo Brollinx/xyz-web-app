@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import FloatingMenu from "@/components/FloatingMenu";
-import FavoritesLauncher from "@/components/FavoritesLauncher";
+// Removed FavoritesLauncher import
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -33,8 +33,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div className="min-h-screen flex flex-col">
       {/* Floating hamburger menu (replaces header) */}
       <FloatingMenu />
-      {/* Global favorites launcher (popup) */}
-      <FavoritesLauncher />
+      {/* Global favorites launcher removed */}
       <main className="flex-grow flex flex-col">
         {children}
       </main>
