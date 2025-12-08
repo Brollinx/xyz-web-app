@@ -5,28 +5,26 @@ import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import GlobalMapContainer from "@/components/GlobalMapContainer";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import mapboxgl from "mapbox-gl"; // Import mapboxgl for resize and easeTo
-import MobileStaticSheet from "@/components/MobileStaticSheet"; // Import the new static sheet
+import mapboxgl from "mapbox-gl";
+import MobileStaticSheet from "@/components/MobileStaticSheet";
 
 interface LayoutManagerProps {
   mapContent: React.ReactNode;
   sheetContent: React.ReactNode;
-  mapRef: React.MutableRefObject<mapboxgl.Map | null>; // Add mapRef prop
+  mapRef: React.MutableRefObject<mapboxgl.Map | null>;
 }
 
 const LayoutManager: React.FC<LayoutManagerProps> = ({
   mapContent,
   sheetContent,
-  mapRef, // Destructure mapRef
+  mapRef,
 }) => {
   const layout = useResponsiveLayout();
   const isMobile = layout === "mobile";
 
-  // State to track the sheet's Y position, managed by MobileStaticSheet
-  const [currentSheetY, setCurrentSheetY] = useState(window.innerHeight * 0.50); // Initialize to MID snap point
+  const [currentSheetY, setCurrentSheetY] = useState(window.innerHeight * 0.50);
   const prevSheetYRef = useRef(currentSheetY); // Ref to store previous sheetY for zoom logic
 
-  // Map resize and easeTo effect
   useEffect(() => {
     if (isMobile && mapRef.current) {
       const mapInstance = mapRef.current;
@@ -48,10 +46,10 @@ const LayoutManager: React.FC<LayoutManagerProps> = ({
       mapInstance.easeTo({
         padding: { bottom: paddingBottom },
         zoom: newZoom, // Apply subtle zoom change
-        duration: 250, // As requested
+        duration: 200, // As requested
       });
     }
-  }, [isMobile, mapRef, currentSheetY]); // Depend on currentSheetY
+  }, [isMobile, mapRef, currentSheetY]);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">
@@ -68,7 +66,7 @@ const LayoutManager: React.FC<LayoutManagerProps> = ({
             {mapContent}
           </div>
           {/* Mobile Static Bottom Sheet */}
-          <MobileStaticSheet onSheetYChange={setCurrentSheetY}> {/* Pass callback */}
+          <MobileStaticSheet onSheetYChange={setCurrentSheetY}>
             {sheetContent}
           </MobileStaticSheet>
         </>
