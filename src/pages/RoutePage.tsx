@@ -110,7 +110,7 @@ const RoutePage = () => {
         if (debounceTimeoutRef.current) {
           clearTimeout(debounceTimeoutRef.current);
         }
-      };
+      }; // Corrected syntax here
     } else {
       toast.error("Geolocation is not supported by your browser.");
       setLoadingInitial(false);
@@ -292,7 +292,7 @@ const RoutePage = () => {
   const travelModeButtons = (
     <div className="flex gap-2">
       <Button
-        size="sm" // Reduced size
+        size="sm"
         variant={selectedTravelMode === 'walking' ? 'default' : 'outline'}
         onClick={() => setSelectedTravelMode('walking')}
         disabled={loadingRoute && selectedTravelMode === 'walking'}
@@ -301,7 +301,7 @@ const RoutePage = () => {
         Walk {walkingRouteSummary.duration !== null ? `(${Math.round(walkingRouteSummary.duration / 60)} min)` : ''}
       </Button>
       <Button
-        size="sm" // Reduced size
+        size="sm"
         variant={selectedTravelMode === 'driving' ? 'default' : 'outline'}
         onClick={() => setSelectedTravelMode('driving')}
         disabled={loadingRoute && selectedTravelMode === 'driving'}
@@ -346,15 +346,16 @@ const RoutePage = () => {
     return (
       <div className="relative flex flex-col h-screen">
         <FloatingBackButton />
-        {/* New fixed container for travel mode buttons on mobile */}
-        <div className="fixed top-4 right-4 z-20">
+        {/* Travel mode buttons moved back to center, below back button */}
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-20">
           {travelModeButtons}
         </div>
         <div className="relative h-[75vh] w-full rounded-t-lg overflow-hidden">
           {mapComponent}
         </div>
         <div className="fixed bottom-0 left-0 right-0 h-[25vh] bg-card text-card-foreground rounded-t-2xl shadow-lg p-4 overflow-y-auto transition-transform duration-300 ease-out">
-          <div className="flex flex-col items-center justify-center h-full">
+          {/* Removed justify-center and h-full to allow p-4 to work */}
+          <div className="flex flex-col items-center"> 
             {loadingRoute && (
               <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
