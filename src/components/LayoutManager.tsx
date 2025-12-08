@@ -69,13 +69,15 @@ const LayoutManager: React.FC<LayoutManagerProps> = ({
     if (!isMobile) return;
 
     // Only start dragging the sheet if the touch began on the drag handle
-    if (dragHandleRef.current && dragHandleRef.current.contains(e.target as Node)) {
-      setIsDraggingSheet(true);
-      setStartY(e.touches[0].clientY);
-      setStartSheetY(sheetY);
-    } else {
-      setIsDraggingSheet(false); // Allow normal scrolling if not on drag handle
+    const target = e.target as HTMLElement;
+    if (!dragHandleRef.current || !dragHandleRef.current.contains(target)) {
+      setIsDraggingSheet(false); // Ensure dragging is false if not on handle
+      return; // Allow normal scrolling if not on drag handle
     }
+
+    setIsDraggingSheet(true);
+    setStartY(e.touches[0].clientY);
+    setStartSheetY(sheetY);
   }, [isMobile, sheetY]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
@@ -142,7 +144,7 @@ const LayoutManager: React.FC<LayoutManagerProps> = ({
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
           >
-            <div ref={dragHandleRef} className="drag-handle" /> {/* Drag handle with ref */}
+            <div ref={dragHandleRef} className="drag-handle" style={{ touchAction: 'none' }} /> {/* Drag handle with ref and touch-action */}
             <ScrollArea className="flex-1 relative h-full"> {/* Ensures ScrollArea takes remaining height and has relative position */}
               {sheetContent}
             </ScrollArea>
