@@ -373,11 +373,11 @@ const RoutePage = () => {
     <div className="flex h-screen">
       <FloatingBackButton />
       <div className="w-[60%] h-full">
-        {/* Desktop: Travel mode buttons moved to top-right of the map area */}
-        <div className="absolute top-4 right-4 z-10">
-          {travelModeButtons}
-        </div>
         {mapComponent}
+      </div>
+      {/* Desktop: Travel mode buttons moved to top-right of the map area, fixed relative to viewport */}
+      <div className="fixed top-4 z-10" style={{ right: 'calc(40% + 16px)' }}>
+        {travelModeButtons}
       </div>
       <div className="w-[40%] h-full p-6 bg-card text-card-foreground shadow-md overflow-y-auto border-l border-border">
         <div className="flex flex-col items-center justify-center h-full">
