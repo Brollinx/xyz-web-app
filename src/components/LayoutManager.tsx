@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react"; // Import useState
+import React, { useRef, useEffect, useState } from "react";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import GlobalMapContainer from "@/components/GlobalMapContainer";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -24,19 +24,31 @@ const LayoutManager: React.FC<LayoutManagerProps> = ({
 
   // State to track the sheet's Y position, managed by MobileStaticSheet
   const [currentSheetY, setCurrentSheetY] = useState(window.innerHeight * 0.50); // Initialize to MID snap point
+  const prevSheetYRef = useRef(currentSheetY); // Ref to store previous sheetY for zoom logic
 
   // Map resize and easeTo effect
   useEffect(() => {
     if (isMobile && mapRef.current) {
       const mapInstance = mapRef.current;
-      // Map height is fixed to currentSheetY (the top edge of the sheet)
       mapInstance.resize();
 
-      // Pad the map view to keep the center visible when sheet moves
       const paddingBottom = window.innerHeight - currentSheetY;
+      let newZoom = mapInstance.getZoom();
+
+      // Implement subtle zoom reaction based on sheet movement
+      if (prevSheetYRef.current !== currentSheetY) {
+        if (currentSheetY > prevSheetYRef.current) { // Sheet moved down, map area decreased
+          newZoom = newZoom + 0.2;
+        } else { // Sheet moved up, map area increased
+          newZoom = newZoom - 0.2;
+        }
+      }
+      prevSheetYRef.current = currentSheetY; // Update previous sheetY
+
       mapInstance.easeTo({
         padding: { bottom: paddingBottom },
-        duration: 200,
+        zoom: newZoom, // Apply subtle zoom change
+        duration: 250, // As requested
       });
     }
   }, [isMobile, mapRef, currentSheetY]); // Depend on currentSheetY
@@ -47,7 +59,7 @@ const LayoutManager: React.FC<LayoutManagerProps> = ({
         <>
           {/* Mobile: Map takes space above the static sheet */}
           <div
-            className="h-full w-full fixed top-0 left-0 z-10 overflow-hidden"
+            className="h-full w-full fixed top-0 left-0 z-10 overflow-hidden" // Map container z-index is 10
             style={{
               height: `${currentSheetY}px`, // Map height is determined by sheet's top position
               transition: "height 0.25s ease", // Smooth transition for map height
