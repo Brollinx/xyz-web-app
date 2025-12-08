@@ -9,6 +9,7 @@ import ProductCardList from "@/components/ProductCardList"; // Corrected import
 import { ThemeToggle } from "@/components/ThemeToggle"; // Corrected import
 import SearchBar from "@/components/SearchBar"; // Corrected import
 import LayoutManager from "@/components/LayoutManager"; // Corrected import
+import FavoritesButton from "@/components/FavoritesButton"; // Import FavoritesButton
 
 interface SearchResultsLayoutProps {
   // All props from useSearchResultsLogic
@@ -117,9 +118,9 @@ const SearchResultsLayout: React.FC<SearchResultsLayoutProps> = (props) => {
       {isMobile && (
         <>
           {/* Floating Back Button removed for mobile on SearchResultsPage */}
-          {/* Floating Theme Toggle for mobile, above the map (z-30) */}
+          {/* Floating Favorites Button for mobile, above the map (z-30) */}
           <div className="fixed top-4 right-4 z-30">
-            <ThemeToggle />
+            <FavoritesButton />
           </div>
           {/* Floating Search Bar for mobile, above the map (z-30) */}
           <div className="fixed top-4 left-[64px] right-[56px] z-30"> {/* Adjusted left for more spacing */}

@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import mapboxgl from "mapbox-gl";
+import FavoritesButton from "@/components/FavoritesButton"; // Import FavoritesButton
 
 interface Product {
   id: string;
@@ -254,7 +255,7 @@ const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
     <>
       {isMobile && (
         <div className="fixed top-4 right-4 z-30">
-          <ThemeToggle />
+          <FavoritesButton />
         </div>
       )}
       <FloatingBackButton />
