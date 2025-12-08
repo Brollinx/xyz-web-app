@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useRef, useState, useEffect, useCallback, useMemo } from "react";
+import React, { useRef, useEffect } from "react";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import GlobalMapContainer from "@/components/GlobalMapContainer";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import mapboxgl from "mapbox-gl"; // Import mapboxgl for resize and easeTo
+import MobileStaticSheet from "@/components/MobileStaticSheet"; // Import the new static sheet
 
 interface LayoutManagerProps {
   mapContent: React.ReactNode;
@@ -21,32 +22,6 @@ const LayoutManager: React.FC<LayoutManagerProps> = ({
   const layout = useResponsiveLayout();
   const isMobile = layout === "mobile";
 
-  // No state or handlers for dragging in the static sheet
-  // const [sheetY, setSheetY] = useState<number>(0);
-  // const [startY, setStartY] = useState<number>(0);
-  // const [startSheetY, setStartSheetY] = useState<number>(0);
-  // const [dragging, setDragging] = useState(false);
-  // const dragHandleRef = useRef<HTMLDivElement>(null);
-
-  // No dynamic snap points for the static sheet
-  // const SNAP = useMemo(() => {
-  //   if (typeof window === 'undefined') {
-  //     return { MINI: 0, MID: 0, FULL: 0 };
-  //   }
-  //   return {
-  //     FULL: window.innerHeight * 0.10,
-  //     MID: window.innerHeight * 0.50,
-  //     MINI: window.innerHeight * 0.82,
-  //   };
-  // }, []);
-
-  // No initial sheet position setting for the static sheet
-  // useEffect(() => {
-  //   if (isMobile) {
-  //     setSheetY(SNAP.MID);
-  //   }
-  // }, [isMobile, SNAP]);
-
   // Map resize effect for static sheet
   useEffect(() => {
     if (isMobile && mapRef.current) {
@@ -56,11 +31,6 @@ const LayoutManager: React.FC<LayoutManagerProps> = ({
       // No padding needed as sheet is static
     }
   }, [isMobile, mapRef]);
-
-  // No touch handlers for the static sheet
-  // const handleTouchStart = useCallback((e: React.TouchEvent) => { /* ... */ }, []);
-  // const handleTouchMove = useCallback((e: React.TouchEvent) => { /* ... */ }, []);
-  // const handleTouchEnd = useCallback(() => { /* ... */ }, []);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">
@@ -76,36 +46,9 @@ const LayoutManager: React.FC<LayoutManagerProps> = ({
             {mapContent}
           </div>
           {/* Mobile Static Bottom Sheet */}
-          <div
-            className="mobile-bottom-sheet"
-            style={{
-              position: 'fixed',
-              bottom: 0,
-              left: 0,
-              width: '100%',
-              height: '50vh', // Fixed height
-              background: 'hsl(var(--background))', // Use theme equivalent
-              borderTopLeftRadius: '16px',
-              borderTopRightRadius: '16px',
-              boxShadow: '0 -6px 20px rgba(0,0,0,0.15)',
-              zIndex: 50,
-              overflow: 'hidden',
-            }}
-          >
-            <div className="drag-handle" style={{
-              width: '48px',
-              height: '6px',
-              background: 'rgba(0,0,0,0.25)',
-              borderRadius: '6px',
-              margin: '10px auto',
-            }}></div>
-            <div className="sheet-content" style={{
-              height: 'calc(100% - 30px)', // 100% minus drag handle height + margin
-              overflowY: 'auto',
-            }}>
-              {sheetContent}
-            </div>
-          </div>
+          <MobileStaticSheet>
+            {sheetContent}
+          </MobileStaticSheet>
         </>
       ) : (
         <>

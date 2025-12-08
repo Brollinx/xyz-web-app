@@ -1,18 +1,14 @@
-"use client";
-
-import React from "react";
-import LayoutManager from "@/components/LayoutManager";
-import SearchResultsMap from "@/components/SearchResultsMap";
-import ProductCardList from "@/components/ProductCardList";
-import SearchFilterModal from "@/components/SearchFilterModal";
-import SearchBar from "@/components/SearchBar"; // Use SearchBar directly
-import FloatingBackButton from "@/components/FloatingBackButton"; // Import FloatingBackButton
-import { ThemeToggle } from "@/components/ThemeToggle"; // Import ThemeToggle
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
+import React, { useRef } from "react";
 import { useSearchResultsLogic } from "@/hooks/useSearchResultsLogic";
-import { cn } from "@/lib/utils"; // For z-index
+import SearchFilterModal from "@/components/SearchFilterModal";
 import mapboxgl from "mapbox-gl"; // Import mapboxgl for mapRef type
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"; // Corrected import
+import SearchResultsMap from "@/components/SearchResultsMap"; // Corrected import
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Corrected import
+import ProductCardList from "@/components/ProductCardList"; // Corrected import
+import { ThemeToggle } from "@/components/ThemeToggle"; // Corrected import
+import SearchBar from "@/components/SearchBar"; // Corrected import
+import LayoutManager from "@/components/LayoutManager"; // Corrected import
 
 interface SearchResultsLayoutProps {
   // All props from useSearchResultsLogic
