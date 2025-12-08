@@ -15,9 +15,9 @@ import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import FloatingBackButton from "@/components/FloatingBackButton";
 import { MAPBOX_TOKEN } from "@/config";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
-import { ThemeToggle } from "@/components/ThemeToggle"; // Import ThemeToggle for mobile
-import mapboxgl from "mapbox-gl"; // Import mapboxgl for mapRef type
+import { useNavigate } from "react-router-dom";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import mapboxgl from "mapbox-gl";
 
 interface Product {
   id: string;
@@ -61,7 +61,7 @@ interface StoreDetailLayoutProps {
   handleWalkToStore: () => void;
   handleToggleFavorite: (e: React.MouseEvent, product: Product) => void;
   mapStyle: string;
-  mapRef: React.MutableRefObject<mapboxgl.Map | null>; // Add mapRef prop
+  mapRef: React.MutableRefObject<mapboxgl.Map | null>;
 }
 
 const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
@@ -75,12 +75,12 @@ const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
   handleWalkToStore,
   handleToggleFavorite,
   mapStyle,
-  mapRef, // Destructure mapRef
+  mapRef,
 }) => {
   const layout = useResponsiveLayout();
   const isMobile = layout === "mobile";
   const { isFavorited } = useFavorites();
-  const navigate = useNavigate(); // Initialize useNavigate
+  const navigate = useNavigate();
 
   const { statusText: storeStatusText, isOpen: isStoreOpen } = getStoreStatus(store.opening_hours);
 
@@ -129,10 +129,10 @@ const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
   );
 
   const sheetContent = (
-    <div className="p-4 space-y-4 bg-background text-foreground"> {/* Ensure theme-adaptive background */}
+    <div className="pt-2 px-4 pb-4 space-y-2 bg-background text-foreground"> {/* Adjusted padding and spacing */}
       {/* Store header info */}
       <div className="text-center md:text-left">
-        <h1 className="text-2xl font-bold">{store.store_name}</h1>
+        <h1 className="text-xl md:text-2xl font-bold">{store.store_name}</h1> {/* Reduced font size for mobile */}
         <p className="text-sm text-muted-foreground">{store.address}</p>
         {store.opening_hours && (
           <p className={cn("text-xs font-semibold mt-1 flex items-center justify-center md:justify-start gap-1", isStoreOpen ? "text-green-600" : "text-red-600")}>
@@ -253,15 +253,15 @@ const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
   return (
     <>
       {isMobile && (
-        <div className="fixed top-4 right-4 z-30"> {/* Floating Theme Toggle for mobile, above the map (z-30) */}
+        <div className="fixed top-4 right-4 z-30">
           <ThemeToggle />
         </div>
       )}
-      <FloatingBackButton /> {/* This is already floating and positioned correctly (z-999) */}
+      <FloatingBackButton />
       <LayoutManager
         mapContent={mapContent}
         sheetContent={sheetContent}
-        mapRef={mapRef} // Pass mapRef
+        mapRef={mapRef}
       />
     </>
   );
