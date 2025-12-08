@@ -123,14 +123,16 @@ const SearchResultsLayout: React.FC<SearchResultsLayoutProps> = (props) => {
             <FavoritesButton />
           </div>
           {/* Floating Search Bar for mobile, above the map (z-30) */}
-          <div className="fixed top-4 left-[64px] right-[56px] z-30"> {/* Adjusted left for more spacing */}
-            <SearchBar
-              initialQuery={props.initialSearchQuery}
-              onSearch={props.handleSearch}
-              onOpenFilters={() => props.setIsFilterModalOpen(true)}
-              isFilterActive={props.isFilterActive}
-              placeholder="Search for products..."
-            />
+          <div className="fixed top-4 left-0 right-0 z-30">
+            <div className="mx-auto max-w-md px-16"> {/* Added px-16 for spacing from FloatingMenu and FavoritesButton */}
+              <SearchBar
+                initialQuery={props.initialSearchQuery}
+                onSearch={props.handleSearch}
+                onOpenFilters={() => props.setIsFilterModalOpen(true)}
+                isFilterActive={props.isFilterActive}
+                placeholder="Search for products..."
+              />
+            </div>
           </div>
         </>
       )}

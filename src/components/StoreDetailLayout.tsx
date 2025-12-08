@@ -258,7 +258,7 @@ const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
           <FavoritesButton />
         </div>
       )}
-      <FloatingBackButton />
+      <FloatingBackButton className="left-16" /> {/* Adjusted left position to avoid overlap with FloatingMenu */}
       <LayoutManager
         mapContent={mapContent}
         sheetContent={sheetContent}
