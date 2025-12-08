@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import FloatingMenu from "@/components/FloatingMenu";
-// Removed FavoritesLauncher import
+import FavoritesModal from "@/components/FavoritesModal"; // Import FavoritesModal
+import { FavoritesModalProvider } from "@/contexts/FavoritesModalContext"; // Import the new context provider
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -10,8 +11,8 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
-  // You can still track login if needed elsewhere
   const [isLoggedIn, setIsLoggedIn] = useState(false); 
+  const [favoritesModalOpen, setFavoritesModalOpen] = useState(false); // State for FavoritesModal
 
   useEffect(() => {
     const checkUser = async () => {
@@ -31,12 +32,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Floating hamburger menu (replaces header) */}
+      {/* Floating hamburger menu */}
       <FloatingMenu />
-      {/* Global favorites launcher removed */}
-      <main className="flex-grow flex flex-col">
-        {children}
-      </main>
+      <FavoritesModalProvider setFavoritesModalOpen={setFavoritesModalOpen}>
+        <main className="flex-grow flex flex-col">
+          {children}
+        </main>
+      </FavoritesModalProvider>
+      {/* Render FavoritesModal here, controlled by context */}
+      <FavoritesModal open={favoritesModalOpen} onOpenChange={setFavoritesModalOpen} />
     </div>
   );
 };

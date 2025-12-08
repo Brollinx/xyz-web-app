@@ -12,12 +12,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import FavoritesModal from "@/components/FavoritesModal";
 import { useTheme } from "next-themes";
+import { useFavoritesModal } from "@/contexts/FavoritesModalContext"; // Import the new hook
 
 const FloatingMenu: React.FC = () => {
-  const [favoritesOpen, setFavoritesOpen] = React.useState(false);
   const { setTheme } = useTheme();
+  const { openFavoritesModal } = useFavoritesModal(); // Use the context hook
 
   return (
     <div className="fixed top-4 left-4 z-[999]">
@@ -50,8 +50,8 @@ const FloatingMenu: React.FC = () => {
           <DropdownMenuItem
             className="flex items-center gap-2"
             onSelect={(e) => {
-              e.preventDefault();
-              setFavoritesOpen(true);
+              e.preventDefault(); // Prevent default navigation
+              openFavoritesModal(true); // Open the modal
             }}
           >
             <Heart className="h-4 w-4" />
@@ -103,7 +103,6 @@ const FloatingMenu: React.FC = () => {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <FavoritesModal open={favoritesOpen} onOpenChange={setFavoritesOpen} />
     </div>
   );
 };
