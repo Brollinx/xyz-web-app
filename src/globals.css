@@ -45,6 +45,8 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --sheet-bg: #ffffff; /* Default light mode sheet background */
   }
 
   .dark {
@@ -87,6 +89,8 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --sheet-bg: #0f0f0f; /* Dark mode sheet background */
   }
 }
 
@@ -106,12 +110,12 @@
   bottom: 0;
   left: 0;
   right: 0;
-  height: 50vh;
-  background: white;
+  /* height: 50vh; Handled by inline style now */
+  /* background: white; Handled by inline style now */
   z-index: 60;
-  border-top-left-radius: 20px; /* Added curved edges */
-  border-top-right-radius: 20px; /* Added curved edges */
-  box-shadow: 0 -6px 20px rgba(0,0,0,0.15); /* Added box-shadow */
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  box-shadow: 0 -6px 20px rgba(0,0,0,0.15);
 }
 
 .xyz-sheet-content {

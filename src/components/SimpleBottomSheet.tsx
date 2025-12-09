@@ -26,6 +26,8 @@ const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({ children, classNa
   const [dragging, setDragging] = useState(false); // Flag to control sheet dragging
   const [startY, setStartY] = useState(0); // Initial touch Y position
   const [startSheetY, setStartSheetY] = useState(0); // Sheet Y position at start of touch
+  const [startScrollTop, setStartScrollTop] = useState(0); // Scroll position at start of touch
+  const contentRef = useRef<HTMLDivElement>(null); // Ref for the scrollable content
 
   // Set initial sheet position on mount and window resize
   useEffect(() => {
@@ -40,22 +42,52 @@ const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({ children, classNa
   }, [sheetY, onSheetYChange]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    setDragging(true);
-    setStartY(e.touches[0].clientY);
-    setStartSheetY(sheetY);
+    const touchY = e.touches[0].clientY;
+    const sheetTop = sheetY; // sheetY represents the top edge of the sheet
+
+    // Broaden drag zone: allow dragging if touch starts inside drag handle OR top 60px of sheet
+    if (touchY <= sheetTop + 60) {
+      setDragging(true);
+      setStartY(touchY);
+      setStartSheetY(sheetY);
+      if (contentRef.current) {
+        setStartScrollTop(contentRef.current.scrollTop);
+      }
+    }
   }, [sheetY]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!dragging) return;
-    e.preventDefault(); // Prevent default scroll behavior when dragging the sheet
+    const currentY = e.touches[0].clientY;
+    const delta = (currentY - startY) * 1.4; // Increased drag sensitivity
 
-    const delta = e.touches[0].clientY - startY;
-    let newY = startSheetY + delta;
+    if (dragging) {
+      e.preventDefault(); // Prevent default scroll behavior when dragging the sheet
+      let newY = startSheetY + delta;
+      newY = Math.min(Math.max(newY, SNAP.FULL), SNAP.MINI);
+      setSheetY(newY);
+    } else if (contentRef.current) {
+      // Phone-like scroll + pull behavior
+      const { scrollTop, scrollHeight, clientHeight } = contentRef.current;
+      const isScrollingDown = delta > 0;
+      const isScrollingUp = delta < 0;
 
-    // Clamp dragging between FULL and MINI snap points
-    newY = Math.min(Math.max(newY, SNAP.FULL), SNAP.MINI);
-    setSheetY(newY);
-  }, [dragging, startY, startSheetY, SNAP]);
+      if (scrollTop === 0 && isScrollingDown) {
+        // If at top and trying to scroll down further, start dragging the sheet
+        e.preventDefault();
+        setDragging(true);
+        setStartY(currentY); // Reset startY to current touch position
+        setStartSheetY(sheetY); // Reset startSheetY to current sheet position
+        setSheetY(Math.min(Math.max(sheetY + delta, SNAP.FULL), SNAP.MINI));
+      } else if (scrollTop + clientHeight >= scrollHeight - 1 && isScrollingUp) { // -1 for float precision
+        // If at bottom and trying to scroll up further, start dragging the sheet
+        e.preventDefault();
+        setDragging(true);
+        setStartY(currentY); // Reset startY to current touch position
+        setStartSheetY(sheetY); // Reset startSheetY to current sheet position
+        setSheetY(Math.min(Math.max(sheetY + delta, SNAP.FULL), SNAP.MINI));
+      }
+    }
+  }, [dragging, startY, startSheetY, sheetY, SNAP]);
 
   const handleTouchEnd = useCallback(() => {
     setDragging(false);
@@ -75,8 +107,8 @@ const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({ children, classNa
     <div
       className={cn(
         "xyz-simple-sheet",
-        "fixed left-0 right-0 w-full bg-background z-50 shadow-lg",
-        "flex flex-col", // Added flex-col to properly layout handle and content
+        "fixed left-0 right-0 w-full z-50 shadow-lg",
+        "flex flex-col",
         "border-t-2 border-border",
         "rounded-t-[16px]",
         className
@@ -86,8 +118,13 @@ const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({ children, classNa
         height: "100vh", // Full height, then translateY positions it
         transform: `translateY(${sheetY}px)`,
         transition: dragging ? "none" : "transform 0.25s ease",
-        boxShadow: '0 -6px 20px rgba(0,0,0,0.15)', // Keep box-shadow from previous step
+        boxShadow: '0 -6px 20px rgba(0,0,0,0.15)',
+        background: 'var(--sheet-bg)', // Use CSS variable for theme support
+        touchAction: 'none', // Prevents browser default touch actions on the entire sheet
       }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
       <div
         className="xyz-drag-handle"
@@ -97,17 +134,15 @@ const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({ children, classNa
           background: 'rgba(0,0,0,0.25)',
           borderRadius: '6px',
           margin: '12px auto 8px auto',
-          touchAction: 'none', // Prevents browser default touch actions
         }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
       ></div>
-      <div className="xyz-sheet-content flex-grow"
+      <div
+        ref={contentRef}
+        className="xyz-sheet-content flex-grow"
         style={{
           overflowY: 'auto',
-          minHeight: '0', // Allow flex-grow to work correctly
-          WebkitOverflowScrolling: 'touch', // Ensure smooth scrolling on iOS
+          minHeight: '0',
+          WebkitOverflowScrolling: 'touch',
         }}
       >
         {children}
