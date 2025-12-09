@@ -35,7 +35,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   // Determine if the back button should be shown
   const showBackButton = 
-    location.pathname.startsWith("/search-results") ||
     location.pathname.startsWith("/route") ||
     location.pathname.startsWith("/store");
 
