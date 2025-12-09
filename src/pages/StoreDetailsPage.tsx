@@ -156,7 +156,7 @@ const StoreDetailsPage = () => {
           if (mapRef.current && newRouteGeoJson.geometry) { // Use mapRef.current here
             const bounds = getBounds(newRouteGeoJson.geometry);
             if (bounds) {
-              mapRef.current.fitBounds(bounds, { padding: 50, duration: 1000 });
+              mapRef.current.fitBounds(bounds, { duration: 1000 }); // Removed padding
             }
           }
         } else {

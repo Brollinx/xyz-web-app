@@ -185,7 +185,7 @@ const RoutePage = () => {
         if (selectedTravelMode === mode && mapRef.current && newRouteGeoJson.geometry) {
           const bounds = getBounds(newRouteGeoJson.geometry);
           if (bounds) {
-            mapRef.current.fitBounds(bounds, { padding: 50, duration: 1000 });
+            mapRef.current.fitBounds(bounds, { duration: 1000 }); // Removed padding
           }
         }
       } else {
@@ -201,7 +201,7 @@ const RoutePage = () => {
       setLoadingRoute(false);
       setLoadingInitial(false);
     }
-  }, [MAPBOX_TOKEN, selectedTravelMode]);
+  }, [MAPBOX_TOKEN, selectedTravelMode, walkingRouteSummary, drivingRouteSummary]);
 
   useEffect(() => {
     if (userLocation && destination) {

@@ -173,7 +173,7 @@ export function useSearchResultsLogic() {
     }
 
     // Calculate distances and apply proximity filter
-    if (locationStatus === "success" && userLocation && currentProximityFilter !== null) {
+    if (locationStatus === "success" && userLocation) {
       tempFilteredProducts = tempFilteredProducts
         .map(product => {
           const distanceInMeters = calculateDistance(
@@ -188,7 +188,7 @@ export function useSearchResultsLogic() {
             formattedDistance: formatDistance(distanceInMeters),
           };
         })
-        .filter(product => (product.distanceMeters ?? Infinity) <= currentProximityFilter)
+        .filter(product => (currentProximityFilter === null || (product.distanceMeters ?? Infinity) <= currentProximityFilter))
         .sort((a, b) => (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity));
     } else if (locationStatus === "success" && userLocation) {
       // If no proximity filter, just calculate distances for display and sort
@@ -235,7 +235,7 @@ export function useSearchResultsLogic() {
       if (pointsToBound.length > 1) {
         const bounds = getBoundsForPoints(pointsToBound);
         if (bounds) {
-          mapInstance.fitBounds(bounds, { padding: 50, duration: 1000 });
+          mapInstance.fitBounds(bounds, { duration: 1000 }); // Removed padding
         }
       } else if (userLocation) {
         mapInstance.flyTo({ center: [userLocation.lng, userLocation.lat], zoom: 12, duration: 1000 });
