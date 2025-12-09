@@ -149,3 +149,62 @@
   border-radius: 6px;
   margin: 12px auto 8px auto;
 }
+
+/* Floating Back Button */
+.floating-back-btn {
+  position: fixed;
+  top: 60px;
+  left: 16px;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  font-size: 18px;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* Floating Menu Button */
+.floating-menu-btn {
+  position: fixed;
+  top: 60px;
+  right: 16px;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  font-size: 20px;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* Side Drawer Panel */
+.side-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 78%; /* Leaves right part visible */
+  height: 100vh;
+  background: var(--background); /* Use theme background */
+  z-index: 300;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+  box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+}
+
+/* Drawer Overlay */
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 250;
+  cursor: pointer;
+}
