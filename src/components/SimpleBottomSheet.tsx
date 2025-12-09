@@ -22,6 +22,7 @@ const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({ children, classNa
         height: "50vh", // Static height as requested
       }}
     >
+      <div className="xyz-drag-handle"></div> {/* Added drag handle visual */}
       <div className="xyz-sheet-content h-full overflow-y-auto">
         {children}
       </div>
