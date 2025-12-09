@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { calculateDistance, formatDistance, cn } from "@/lib/utils";
 import StoreIcon from "@/assets/store.svg";
-import FloatingBackButton from "@/components/FloatingBackButton";
 import { useHighPrecisionGeolocation } from "@/hooks/useHighPrecisionGeolocation";
 import SearchBar from "@/components/SearchBar"; // Import SearchBar
 import StoreFilterModal from "@/components/StoreFilterModal"; // Import the new StoreFilterModal
@@ -137,7 +136,7 @@ const NearbyStoresPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center bg-gray-50 dark:bg-slate-950 p-4">
-      <FloatingBackButton />
+      {/* FloatingBackButton removed from here */}
       <div className="w-full max-w-4xl text-center space-y-6 mb-8">
         <h1 className="text-4xl font-bold text-gray-900">Nearby Stores</h1>
         <div className="flex w-full items-center space-x-2 mx-auto">

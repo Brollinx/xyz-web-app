@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
-import FloatingMenu from "@/components/FloatingMenu";
 import FavoritesModal from "@/components/FavoritesModal";
 import { FavoritesModalProvider } from "@/contexts/FavoritesModalContext";
-import MenuSheet from "@/components/MenuSheet"; // Import the new MenuSheet
+import MenuSheet from "@/components/MenuSheet";
+import TopLeftControls from "@/components/TopLeftControls"; // Import the new TopLeftControls component
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -14,7 +14,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [favoritesModalOpen, setFavoritesModalOpen] = useState(false);
-  const [menuSheetOpen, setMenuSheetOpen] = useState(false); // State for MenuSheet
+  const [menuSheetOpen, setMenuSheetOpen] = useState(false);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -35,8 +35,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="min-h-screen flex flex-col">
       <FavoritesModalProvider setFavoritesModalOpen={setFavoritesModalOpen}>
-        {/* Floating hamburger menu button */}
-        <FloatingMenu onOpen={() => setMenuSheetOpen(true)} />
+        {/* Top-left controls (Menu and Back buttons) */}
+        <TopLeftControls onOpenMenu={() => setMenuSheetOpen(true)} />
         {/* The actual menu sheet/drawer */}
         <MenuSheet isOpen={menuSheetOpen} onOpenChange={setMenuSheetOpen} />
         <main className="flex-grow flex flex-col">

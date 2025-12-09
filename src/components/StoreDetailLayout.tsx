@@ -12,7 +12,6 @@ import { Footprints, Search, Heart, Phone, Clock } from "lucide-react";
 import { cn, getStoreStatus } from "@/lib/utils";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
-import FloatingBackButton from "@/components/FloatingBackButton";
 import { MAPBOX_TOKEN } from "@/config";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
@@ -258,7 +257,7 @@ const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
           <FavoritesButton />
         </div>
       )}
-      <FloatingBackButton /> {/* Removed className="left-16" */}
+      {/* FloatingBackButton removed from here */}
       <LayoutManager
         mapContent={mapContent}
         sheetContent={sheetContent}

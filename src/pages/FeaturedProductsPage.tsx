@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import FloatingBackButton from "@/components/FloatingBackButton";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -90,7 +89,7 @@ const FeaturedProductsPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center bg-gray-50 dark:bg-slate-950 p-4">
-      <FloatingBackButton />
+      {/* FloatingBackButton removed from here */}
       <div className="w-full max-w-4xl text-center space-y-6 mb-8">
         <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100">Featured Products</h1>
         <p className="text-lg text-gray-600 dark:text-gray-400">From stores you've recently visited</p>

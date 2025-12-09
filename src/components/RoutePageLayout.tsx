@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Clock, MapPin, Car, Footprints, Phone } from "lucide-react";
 import { cn, formatDistance } from "@/lib/utils";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
-import FloatingBackButton from "@/components/FloatingBackButton";
 import { MAPBOX_TOKEN } from "@/config";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import mapboxgl from "mapbox-gl";
@@ -168,7 +167,7 @@ const RoutePageLayout: React.FC<RoutePageLayoutProps> = ({
           <FavoritesButton />
         </div>
       )}
-      <FloatingBackButton className="left-16" />
+      {/* FloatingBackButton removed from here */}
       <LayoutManager
         mapContent={mapContent}
         sheetContent={sheetContent}
