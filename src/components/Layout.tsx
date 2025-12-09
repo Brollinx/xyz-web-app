@@ -1,12 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
-import FavoritesModal from "@/components/FavoritesModal";
-import { FavoritesModalProvider } from "@/contexts/FavoritesModalContext";
-import { useResponsiveLayout } from "@/hooks/useResponsiveLayout"; // Import useResponsiveLayout
-import MobileFloatingBackButton from "@/components/MobileFloatingBackButton"; // Import new back button
-import MobileFloatingMenuButton from "@/components/MobileFloatingMenuButton"; // Import new menu button
-import MobileSideDrawer from "@/components/MobileSideDrawer"; // Import new side drawer
+import FloatingMenu from "@/components/FloatingMenu";
+import FavoritesModal from "@/components/FavoritesModal"; // Import FavoritesModal
+import { FavoritesModalProvider } from "@/contexts/FavoritesModalContext"; // Import the new context provider
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -15,10 +12,7 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const [isLoggedIn, setIsLoggedIn] = useState(false); 
-  const [favoritesModalOpen, setFavoritesModalOpen] = useState(false);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false); // State for mobile drawer
-  const layout = useResponsiveLayout();
-  const isMobile = layout === "mobile";
+  const [favoritesModalOpen, setFavoritesModalOpen] = useState(false); // State for FavoritesModal
 
   useEffect(() => {
     const checkUser = async () => {
@@ -39,16 +33,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="min-h-screen flex flex-col">
       <FavoritesModalProvider setFavoritesModalOpen={setFavoritesModalOpen}>
-        {isMobile && (
-          <>
-            <MobileFloatingBackButton />
-            <MobileFloatingMenuButton onClick={() => setIsDrawerOpen(true)} />
-            <MobileSideDrawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} />
-          </>
-        )}
+        {/* Floating hamburger menu - now inside the provider */}
+        <FloatingMenu />
         <main className="flex-grow flex flex-col">
           {children}
         </main>
+        {/* Render FavoritesModal here, controlled by context */}
         <FavoritesModal open={favoritesModalOpen} onOpenChange={setFavoritesModalOpen} />
       </FavoritesModalProvider>
     </div>
