@@ -4,6 +4,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface FloatingBackButtonProps {
   className?: string;
@@ -22,7 +23,10 @@ const FloatingBackButton: React.FC<FloatingBackButtonProps> = ({ className, fall
   };
 
   return (
-    <div className={className || "fixed top-4 left-16 z-[999]"}>
+    <div className={cn(
+      "fixed top-[60px] left-[70px] z-[1000]", // Updated position and z-index
+      className
+    )}>
       <Button
         variant="secondary"
         size="icon"

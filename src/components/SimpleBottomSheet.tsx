@@ -17,7 +17,7 @@ const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({ children, classNa
     }
     return {
       FULL: window.innerHeight * 0.15, // 15% from top (fully open)
-      MID: window.innerHeight * 0.50, // 50% from top (default open)
+      MID: window.innerHeight * 0.60, // 60% from top (default open)
       MINI: window.innerHeight * 0.82, // 82% from top (mostly closed)
     };
   }, []);
@@ -119,7 +119,7 @@ const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({ children, classNa
         transform: `translateY(${sheetY}px)`,
         transition: dragging ? "none" : "transform 0.25s ease",
         boxShadow: '0 -6px 20px rgba(0,0,0,0.15)',
-        background: 'var(--sheet-bg)', // Use CSS variable for theme support
+        // background: 'var(--sheet-bg)', // Use CSS variable for theme support - REMOVED, now in CSS class
         touchAction: 'none', // Prevents browser default touch actions on the entire sheet
       }}
       onTouchStart={handleTouchStart}

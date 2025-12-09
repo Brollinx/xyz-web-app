@@ -110,9 +110,9 @@
   bottom: 0;
   left: 0;
   right: 0;
-  /* height: 50vh; Handled by inline style now */
-  background: rgba(255,255,255,0.98); /* Made translucent */
-  z-index: 60;
+  background-color: var(--sheet-bg); /* ADDED */
+  overflow: hidden; /* ADDED */
+  z-index: 600; /* CHANGED from 60 */
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
   box-shadow: 0 -6px 20px rgba(0,0,0,0.15);
@@ -121,20 +121,20 @@
 .xyz-simple-sheet::before {
   content: "";
   position: absolute;
-  top: -14px; /* Position above the sheet to cover the curve gap */
-  left: 0;
-  right: 0;
-  height: 14px;
-  background: rgba(255,255,255,0.98); /* Match sheet background */
+  top: -18px; /* CHANGED from -14px */
+  left: -20px; /* CHANGED from 0 */
+  right: -20px; /* CHANGED from 0 */
+  height: 22px; /* CHANGED from 14px */
+  background: var(--sheet-bg); /* Match sheet background */
   z-index: -1; /* Ensure it's behind the sheet content */
 }
 
 .dark .xyz-simple-sheet {
-  background: rgba(15,15,15,0.98); /* Dark mode translucent background */
+  /* background: rgba(15,15,15,0.98); This is now handled by var(--sheet-bg) */
 }
 
 .dark .xyz-simple-sheet::before {
-  background: rgba(15,15,15,0.98); /* Dark mode translucent background for overlay */
+  /* background: rgba(15,15,15,0.98); This is now handled by var(--sheet-bg) */
 }
 
 .xyz-sheet-content {

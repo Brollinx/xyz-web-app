@@ -2,8 +2,9 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import FloatingMenu from "@/components/FloatingMenu";
-import FavoritesModal from "@/components/FavoritesModal"; // Import FavoritesModal
-import { FavoritesModalProvider } from "@/contexts/FavoritesModalContext"; // Import the new context provider
+import FavoritesModal from "@/components/FavoritesModal";
+import { FavoritesModalProvider } from "@/contexts/FavoritesModalContext";
+import MenuSheet from "@/components/MenuSheet"; // Import the new MenuSheet
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -11,8 +12,9 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
-  const [isLoggedIn, setIsLoggedIn] = useState(false); 
-  const [favoritesModalOpen, setFavoritesModalOpen] = useState(false); // State for FavoritesModal
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [favoritesModalOpen, setFavoritesModalOpen] = useState(false);
+  const [menuSheetOpen, setMenuSheetOpen] = useState(false); // State for MenuSheet
 
   useEffect(() => {
     const checkUser = async () => {
@@ -33,8 +35,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="min-h-screen flex flex-col">
       <FavoritesModalProvider setFavoritesModalOpen={setFavoritesModalOpen}>
-        {/* Floating hamburger menu - now inside the provider */}
-        <FloatingMenu />
+        {/* Floating hamburger menu button */}
+        <FloatingMenu onOpen={() => setMenuSheetOpen(true)} />
+        {/* The actual menu sheet/drawer */}
+        <MenuSheet isOpen={menuSheetOpen} onOpenChange={setMenuSheetOpen} />
         <main className="flex-grow flex flex-col">
           {children}
         </main>
