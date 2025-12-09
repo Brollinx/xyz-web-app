@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import GlobalMapContainer from "@/components/GlobalMapContainer";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import mapboxgl from "mapbox-gl";
-import SimpleBottomSheet from "@/components/SimpleBottomSheet"; // Changed import
+import SimpleBottomSheet from "@/components/SimpleBottomSheet";
 
 interface LayoutManagerProps {
   mapContent: React.ReactNode;
@@ -21,45 +21,54 @@ const LayoutManager: React.FC<LayoutManagerProps> = ({
 }) => {
   const layout = useResponsiveLayout();
   const isMobile = layout === "mobile";
+  const [currentSheetY, setCurrentSheetY] = useState(0); // State to receive sheetY from SimpleBottomSheet
+  const prevSheetYRef = useRef(currentSheetY); // Ref to store previous sheetY for zoom logic
 
-  // Removed currentSheetY state and related logic as per instructions.
-  // The map padding/zoom logic tied to sheetY is also removed.
+  // Callback to update currentSheetY state
+  const handleSheetYChange = useCallback((y: number) => {
+    setCurrentSheetY(y);
+  }, []);
 
+  // Effect to make map follow bottom sheet movement (padding and zoom)
   useEffect(() => {
-    if (!isMobile && mapRef.current) {
-      // For desktop, ensure map resizes if window changes
-      mapRef.current.resize();
-    } else if (isMobile && mapRef.current) {
-      // For mobile, map takes 50vh, sheet takes 50vh.
-      // Map needs to be resized and potentially centered.
-      const mapInstance = mapRef.current;
-      mapInstance.resize();
-      // If you want to center the map to account for the bottom sheet,
-      // you might need to adjust its center or padding here.
-      // For now, we'll just resize.
-      mapInstance.easeTo({
-        padding: { bottom: window.innerHeight * 0.50 }, // Adjust map view to account for static 50vh sheet
-        duration: 200,
-      });
-    }
-  }, [isMobile, mapRef]);
+    if (!isMobile || !mapRef.current) return;
 
+    const mapInstance = mapRef.current;
+    const currentZoom = mapInstance.getZoom();
+    const paddingBottom = window.innerHeight - currentSheetY;
+
+    // 1. Add Mapbox padding as the sheet moves
+    mapInstance.resize(); // Always resize before adjusting padding/camera
+    mapInstance.easeTo({
+      padding: { bottom: paddingBottom },
+      duration: 200,
+    });
+
+    // 2. Add subtle zoom reaction
+    // Only react if sheetY has actually changed
+    if (currentSheetY !== prevSheetYRef.current) {
+      if (currentSheetY > prevSheetYRef.current) { // Sheet is moving down (more of the map is covered)
+        mapInstance.zoomTo(currentZoom + 0.15, { duration: 200 });
+      } else if (currentSheetY < prevSheetYRef.current) { // Sheet is moving up (more of the map is revealed)
+        mapInstance.zoomTo(currentZoom - 0.15, { duration: 200 });
+      }
+    }
+    prevSheetYRef.current = currentSheetY; // Update previous sheetY for next render
+
+  }, [currentSheetY, isMobile, mapRef]);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">
       {isMobile ? (
         <>
-          {/* Mobile: Map takes space above the static sheet */}
+          {/* Mobile: Map takes full screen, sheet overlays it */}
           <div
-            className="h-full w-full fixed top-0 left-0 z-10 overflow-hidden"
-            style={{
-              height: `50vh`, // Map height is fixed to 50vh
-            }}
+            className="h-screen w-full fixed top-0 left-0 z-10 overflow-hidden"
           >
             {mapContent}
           </div>
           {/* Mobile Static Bottom Sheet */}
-          <SimpleBottomSheet> {/* Using the new SimpleBottomSheet */}
+          <SimpleBottomSheet onSheetYChange={handleSheetYChange}>
             {sheetContent}
           </SimpleBottomSheet>
         </>
