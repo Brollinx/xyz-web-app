@@ -99,3 +99,18 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* New SimpleBottomSheet CSS */
+.xyz-simple-sheet {
+  /* Tailwind classes handle most of this, but explicit height is needed */
+  /* position: fixed; bottom: 0; left: 0; right: 0; */
+  /* height: 50vh; */
+  /* background: white; */
+  /* z-index: 60; */
+}
+
+.xyz-sheet-content {
+  /* Tailwind classes handle most of this, but explicit height and overflow are needed */
+  /* height: 100%; */
+  /* overflow-y: auto; */
+}
