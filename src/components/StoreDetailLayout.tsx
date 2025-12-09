@@ -19,6 +19,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import mapboxgl from "mapbox-gl";
 import FavoritesButton from "@/components/FavoritesButton";
 import { BarcodeScanner } from '@capacitor-community/barcode-scanner'; // Import BarcodeScanner
+import { toast } from "sonner"; // Import toast from sonner
 
 interface Product {
   id: string;
@@ -276,7 +277,7 @@ const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
                       <h3 className="font-bold text-base truncate">{product.name}</h3>
                       <div className="flex items-center flex-wrap gap-x-2 text-xs mt-1">
                         <span className="font-bold text-green-600 dark:text-green-400">
-                          {selectedProduct.currency_symbol}{product.price.toFixed(2)}
+                          {product.currency_symbol}{product.price.toFixed(2)}
                         </span>
                         <span className={cn("font-semibold", product.stock_quantity > 0 ? "text-green-500" : "text-red-500")}>
                           {product.stock_quantity > 0 ? "In Stock" : "Out of Stock"}
