@@ -50,7 +50,7 @@ const MobileStaticSheet: React.FC<MobileStaticSheetProps> = ({ children, classNa
     e.preventDefault(); // Prevent default scroll behavior when dragging the sheet
 
     const currentY = e.touches[0].clientY;
-    const diff = currentY - startY;
+    const diff = (currentY - startY) * 1.35; // PROBLEM 1 FIX: Multiply movement for sensitivity
     let newY = startSheetY + diff;
 
     // Clamp dragging between FULL and MINI snap points
@@ -111,10 +111,13 @@ const MobileStaticSheet: React.FC<MobileStaticSheetProps> = ({ children, classNa
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       ></div>
-      <div className="xyz-sheet-content" style={{
-        height: 'calc(100% - 30px)', // 100% minus drag handle height + margin
-        overflowY: 'auto',
-      }}>
+      <div className="xyz-sheet-content flex-grow" // PROBLEM 2 FIX: Use flex-grow
+        style={{
+          overflowY: 'auto',
+          minHeight: '0', // PROBLEM 2 FIX: Allow flex item to shrink
+          WebkitOverflowScrolling: 'touch', // PROBLEM 2 FIX: For smooth iOS scrolling
+        }}
+      >
         {children}
       </div>
     </div>
