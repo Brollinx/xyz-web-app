@@ -185,16 +185,25 @@ const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
       <div className="text-center md:text-left">
         <h1 className="text-xl md:text-2xl font-bold">{store.store_name}</h1> {/* Reduced font size for mobile */}
         <p className="text-sm text-muted-foreground">{store.address}</p>
-        {store.opening_hours && (
-          <p className={cn("text-xs font-semibold mt-1 flex items-center justify-center md:justify-start gap-1", isStoreOpen ? "text-green-600" : "text-red-600")}>
-            <Clock className="h-4 w-4" /> {storeStatusText}
-          </p>
-        )}
-        {store.phone_number && (
-          <a href={`tel:${store.phone_number}`} className="text-xs text-blue-600 hover:underline flex items-center justify-center md:justify-start gap-1 mt-1">
-            <Phone className="h-4 w-4" /> {store.phone_number}
-          </a>
-        )}
+        <div className="flex items-center justify-center md:justify-start gap-2 mt-1"> {/* Combined status and phone number */}
+          {store.opening_hours && (
+            <p className={cn("text-sm font-semibold flex items-center gap-1", isStoreOpen ? "text-green-600" : "text-red-600")}>
+              <Clock className="h-4 w-4" /> {storeStatusText}
+            </p>
+          )}
+          {store.phone_number && (
+            <a href={`tel:${store.phone_number}`} className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+              <Phone className="h-4 w-4" /> {store.phone_number}
+            </a>
+          )}
+        </div>
+        {/* Walk to Store button - repositioned */}
+        <div className="flex justify-center items-center mt-2">
+          <Button size="sm" variant="outline" onClick={handleWalkToStore} disabled={!userLocation} className="px-4">
+            <Footprints className="mr-2 h-4 w-4" />
+            Walk to Store
+          </Button>
+        </div>
       </div>
 
       {/* Selected Product (compact like search list) */}
@@ -228,14 +237,6 @@ const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
           </CardContent>
         </Card>
       )}
-
-      {/* Walk to Store button */}
-      <div className="flex justify-center items-center">
-        <Button size="sm" variant="outline" onClick={handleWalkToStore} disabled={!userLocation} className="px-4">
-          <Footprints className="mr-2 h-4 w-4" />
-          Walk to Store
-        </Button>
-      </div>
 
       {/* Other Products + search (compact list style) */}
       {allStoreProducts.length > 1 && (
