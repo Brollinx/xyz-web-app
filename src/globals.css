@@ -149,3 +149,30 @@
   border-radius: 6px;
   margin: 12px auto 8px auto;
 }
+
+/* Barcode Scanner Active Styles */
+.barcode-scanner-active {
+  background: transparent !important;
+  --background: transparent !important;
+  --card: transparent !important;
+  --popover: transparent !important;
+  --secondary: transparent !important;
+  --muted: transparent !important;
+  --accent: transparent !important;
+  --border: transparent !important;
+  --input: transparent !important;
+  --ring: transparent !important;
+  --sheet-bg: transparent !important;
+}
+.barcode-scanner-active body {
+  background: transparent !important;
+}
+.barcode-scanner-active #root {
+  background: transparent !important;
+}
+.barcode-scanner-active .xyz-simple-sheet {
+  background-color: transparent !important;
+}
+.barcode-scanner-active .xyz-simple-sheet::before {
+  background: transparent !important;
+}

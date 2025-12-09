@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import LayoutManager from "@/components/LayoutManager";
 import Map, { Marker, Source, Layer } from "react-map-gl";
 import type { Feature, GeoJsonProperties, Geometry } from "geojson";
@@ -8,7 +8,7 @@ import type { LinePaint } from "mapbox-gl";
 import StoreIcon from "@/assets/store.svg";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Footprints, Search, Heart, Phone, Clock } from "lucide-react";
+import { Footprints, Search, Heart, Phone, Clock, Scan } from "lucide-react"; // Added Scan icon
 import { cn, getStoreStatus } from "@/lib/utils";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
@@ -17,7 +17,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import mapboxgl from "mapbox-gl";
-import FavoritesButton from "@/components/FavoritesButton"; // Import FavoritesButton
+import FavoritesButton from "@/components/FavoritesButton";
+import { BarcodeScanner } from '@capacitor-community/barcode-scanner'; // Import BarcodeScanner
 
 interface Product {
   id: string;
@@ -27,6 +28,7 @@ interface Product {
   image_url?: string;
   currency: string;
   currency_symbol?: string;
+  barcode?: string; // Added barcode field
 }
 
 interface OpeningHour {
@@ -81,6 +83,7 @@ const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
   const isMobile = layout === "mobile";
   const { isFavorited } = useFavorites();
   const navigate = useNavigate();
+  const [isScanning, setIsScanning] = useState(false); // State for barcode scanner
 
   const { statusText: storeStatusText, isOpen: isStoreOpen } = getStoreStatus(store.opening_hours);
 
@@ -90,6 +93,53 @@ const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
     const lowerCaseQuery = productSearchQuery.toLowerCase();
     return productsToFilter.filter(product => product.name.toLowerCase().includes(lowerCaseQuery));
   }, [allStoreProducts, selectedProduct, productSearchQuery]);
+
+  // Barcode scanner logic
+  const startScan = useCallback(async () => {
+    // Check camera permission
+    const status = await BarcodeScanner.checkPermission({ force: true });
+    if (status.granted) {
+      setIsScanning(true);
+      document.body.classList.add('barcode-scanner-active'); // Hide webview content
+      BarcodeScanner.hideBackground(); // Hide Capacitor's webview background
+
+      const result = await BarcodeScanner.startScan(); // Start scanning
+
+      if (result.hasContent) {
+        const scannedBarcode = result.content;
+        const matchedProduct = allStoreProducts.find(p => p.barcode === scannedBarcode);
+
+        if (matchedProduct) {
+          navigate(`/store/${store.id}?product=${matchedProduct.id}`);
+          setProductSearchQuery(matchedProduct.name); // Update search query with product name
+          toast.success(`Scanned: ${matchedProduct.name}`);
+        } else {
+          toast.error(`No product found for barcode: ${scannedBarcode}`);
+        }
+      }
+      stopScan(); // Stop scan regardless of result
+    } else if (status.denied) {
+      toast.error("Camera permission denied. Please enable it in your app settings.");
+    } else {
+      toast.error("Failed to get camera permission.");
+    }
+  }, [allStoreProducts, navigate, store.id, setProductSearchQuery]);
+
+  const stopScan = useCallback(() => {
+    BarcodeScanner.showBackground(); // Show Capacitor's webview background
+    document.body.classList.remove('barcode-scanner-active'); // Show webview content
+    BarcodeScanner.stopScan();
+    setIsScanning(false);
+  }, []);
+
+  useEffect(() => {
+    // Cleanup scanner on component unmount
+    return () => {
+      if (isScanning) {
+        stopScan();
+      }
+    };
+  }, [isScanning, stopScan]);
 
   const mapContent = (
     <Map
@@ -193,17 +243,20 @@ const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
             <CardTitle>Other Products at {store.store_name}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center space-x-2 mb-3">
+            <div className="relative flex items-center space-x-2 mb-3 search-container"> {/* Added relative and search-container class */}
               <Input
                 type="text"
                 placeholder="Search products in this store..."
-                className="flex-grow h-9"
+                className="flex-grow h-9 pr-10" // Added pr-10 for barcode button
                 value={productSearchQuery}
                 onChange={(e) => setProductSearchQuery(e.target.value)}
               />
               <Button type="button" size="icon" variant="secondary" className="h-9 w-9">
                 <Search className="h-4 w-4" />
               </Button>
+              <button type="button" className="barcode-btn absolute right-10 top-1/2 -translate-y-1/2 text-lg bg-transparent border-none cursor-pointer" onClick={startScan}> {/* Barcode button */}
+                <Scan className="h-5 w-5 text-muted-foreground" />
+              </button>
             </div>
 
             <div className="divide-y border rounded-md">
@@ -223,7 +276,7 @@ const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
                       <h3 className="font-bold text-base truncate">{product.name}</h3>
                       <div className="flex items-center flex-wrap gap-x-2 text-xs mt-1">
                         <span className="font-bold text-green-600 dark:text-green-400">
-                          {product.currency_symbol}{product.price.toFixed(2)}
+                          {selectedProduct.currency_symbol}{product.price.toFixed(2)}
                         </span>
                         <span className={cn("font-semibold", product.stock_quantity > 0 ? "text-green-500" : "text-red-500")}>
                           {product.stock_quantity > 0 ? "In Stock" : "Out of Stock"}
@@ -257,12 +310,18 @@ const StoreDetailLayout: React.FC<StoreDetailLayoutProps> = ({
           <FavoritesButton />
         </div>
       )}
-      {/* FloatingBackButton removed from here */}
       <LayoutManager
         mapContent={mapContent}
         sheetContent={sheetContent}
         mapRef={mapRef}
       />
+      {isScanning && (
+        <div className="fixed inset-0 z-[1200] bg-black/80 flex items-center justify-center text-white">
+          <Button onClick={stopScan} variant="destructive" className="absolute bottom-10">
+            Cancel Scan
+          </Button>
+        </div>
+      )}
     </>
   );
 };

@@ -98,7 +98,7 @@ const ProductCardList: React.FC<ProductCardListProps> = ({
                     />
                   </Button>
                   <Button variant="ghost" size="icon" onClick={(e) => onMapIconClick(e, product)} className="h-8 w-8 p-0">
-                    <MapPin className="h-5 w-5 text-white" /> {/* Changed to text-white for guaranteed visibility */}
+                    <MapPin className="h-5 w-5 text-blue-600" /> {/* Restored MapPin icon */}
                   </Button>
                 </div>
               </div>
