@@ -9,14 +9,11 @@ import { useNavigate } from "react-router-dom";
 
 interface TopLeftControlsProps {
   onOpenMenu: () => void;
+  showBackButton: boolean; // New prop to control back button visibility
 }
 
-const TopLeftControls: React.FC<TopLeftControlsProps> = ({ onOpenMenu }) => {
-  const location = useLocation();
+const TopLeftControls: React.FC<TopLeftControlsProps> = ({ onOpenMenu, showBackButton }) => {
   const navigate = useNavigate();
-
-  // Check if current path is a route page ONLY
-  const isRoutePage = location.pathname.startsWith("/route/");
 
   const handleBack = () => {
     if (window.history.length > 1) {
@@ -41,7 +38,7 @@ const TopLeftControls: React.FC<TopLeftControlsProps> = ({ onOpenMenu }) => {
         <Menu className="h-5 w-5" />
       </Button>
 
-      {isRoutePage && (
+      {showBackButton && ( // Use the new prop here
         <Button
           variant="secondary"
           size="icon"

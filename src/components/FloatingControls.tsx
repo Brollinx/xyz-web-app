@@ -4,7 +4,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, SlidersHorizontal, ChevronLeft } from "lucide-react"; // Removed Home icon as ChevronLeft serves back/home
+import { Search, SlidersHorizontal } from "lucide-react"; // Removed ChevronLeft
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import FavoritesButton from "@/components/FavoritesButton";
@@ -53,20 +53,12 @@ const FloatingControls: React.FC<FloatingControlsProps> = ({
           "bg-background/80 backdrop-blur-sm dark:bg-background/60",
           "border-border dark:border-muted"
         )}>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/')} // Back/Home button
-            className="absolute left-2 text-muted-foreground hover:bg-transparent"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
+          {/* Removed ChevronLeft button from here */}
           <Input
             type="text"
             placeholder={placeholder}
             className={cn(
-              "flex-grow h-12 pl-12 pr-12 rounded-full border-none focus-visible:ring-0 focus-visible:ring-offset-0",
+              "flex-grow h-12 pl-4 pr-12 rounded-full border-none focus-visible:ring-0 focus-visible:ring-offset-0", // Adjusted pl-12 to pl-4
               "bg-transparent text-foreground placeholder:text-muted-foreground"
             )}
             value={query}

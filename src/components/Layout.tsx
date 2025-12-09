@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom"; // Import useLocation
 import { supabase } from "@/lib/supabase";
 import FavoritesModal from "@/components/FavoritesModal";
 import { FavoritesModalProvider } from "@/contexts/FavoritesModalContext";
 import MenuSheet from "@/components/MenuSheet";
-import TopLeftControls from "@/components/TopLeftControls"; // Import the new TopLeftControls component
+import TopLeftControls from "@/components/TopLeftControls";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -12,6 +12,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
+  const location = useLocation(); // Get current location
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [favoritesModalOpen, setFavoritesModalOpen] = useState(false);
   const [menuSheetOpen, setMenuSheetOpen] = useState(false);
@@ -32,11 +33,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     };
   }, []);
 
+  // Determine if the back button should be shown
+  const showBackButton = 
+    location.pathname.startsWith("/search-results") ||
+    location.pathname.startsWith("/route") ||
+    location.pathname.startsWith("/store");
+
   return (
     <div className="min-h-screen flex flex-col">
       <FavoritesModalProvider setFavoritesModalOpen={setFavoritesModalOpen}>
         {/* Top-left controls (Menu and Back buttons) */}
-        <TopLeftControls onOpenMenu={() => setMenuSheetOpen(true)} />
+        <TopLeftControls onOpenMenu={() => setMenuSheetOpen(true)} showBackButton={showBackButton} />
         {/* The actual menu sheet/drawer */}
         <MenuSheet isOpen={menuSheetOpen} onOpenChange={setMenuSheetOpen} />
         <main className="flex-grow flex flex-col">
