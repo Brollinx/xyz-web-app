@@ -23,7 +23,7 @@ const MobileStaticSheet: React.FC<MobileStaticSheetProps> = ({ children, classNa
   }, []);
 
   const [sheetY, setSheetY] = useState(SNAP.MID); // Y position of the sheet's top edge
-  const [dragging, setDragging] = useState(false); // Flag to control sheet dragging
+  const [isDragging, setIsDragging] = useState(false); // Flag to control sheet dragging
   const [startY, setStartY] = useState(0); // Initial touch Y position
   const [startSheetY, setStartSheetY] = useState(0); // Sheet Y position at start of touch
 
@@ -40,61 +40,43 @@ const MobileStaticSheet: React.FC<MobileStaticSheetProps> = ({ children, classNa
   }, [sheetY, onSheetYChange]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    setDragging(true);
+    setIsDragging(true);
     setStartY(e.touches[0].clientY);
     setStartSheetY(sheetY);
   }, [sheetY]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!dragging) return;
+    if (!isDragging) return;
     e.preventDefault(); // Prevent default scroll behavior when dragging the sheet
 
-    const currentY = e.touches[0].clientY;
-    const diff = (currentY - startY) * 1.35; // PROBLEM 1 FIX: Multiply movement for sensitivity
-    let newY = startSheetY + diff;
+    const delta = e.touches[0].clientY - startY;
+    let newY = startSheetY + delta;
 
     // Clamp dragging between FULL and MINI snap points
     newY = Math.min(Math.max(newY, SNAP.FULL), SNAP.MINI);
     setSheetY(newY);
-  }, [dragging, startY, startSheetY, SNAP]);
+  }, [isDragging, startY, startSheetY, SNAP]);
 
   const handleTouchEnd = useCallback(() => {
-    if (!dragging) return;
-    setDragging(false);
-
-    // Snap to nearest point
-    const currentSheetY = sheetY;
-    const windowHeight = window.innerHeight;
-
-    // Thresholds for snapping
-    const fullThreshold = windowHeight * 0.30; // If sheetY is less than 30% from top, snap to FULL
-    const miniThreshold = windowHeight * 0.70; // If sheetY is more than 70% from top, snap to MINI
-
-    if (currentSheetY < fullThreshold) {
-      setSheetY(SNAP.FULL);
-    } else if (currentSheetY > miniThreshold) {
-      setSheetY(SNAP.MINI);
-    } else {
-      setSheetY(SNAP.MID);
-    }
-  }, [dragging, sheetY, SNAP]);
+    setIsDragging(false);
+  }, []);
 
   return (
     <div
       className={cn(
         "xyz-mobile-sheet",
-        "fixed left-0 right-0 w-full bg-background z-50 shadow-lg", // Use theme equivalent for background
-        "flex flex-col", // Ensure flex column for drag handle and scroll area
-        "border-t-2 border-border", // Add a subtle border to separate from map
+        "fixed left-0 right-0 w-full bg-background z-50 shadow-lg",
+        "flex flex-col",
+        "border-t-2 border-border",
         "rounded-t-[16px]",
         className
       )}
       style={{
-        top: 0, // Sheet starts at the top of the viewport
-        height: "100vh", // Sheet takes full viewport height
-        transform: `translateY(${sheetY}px)`, // Translate it down to sheetY
-        transition: dragging ? "none" : "transform 0.25s ease",
-        boxShadow: '0 -6px 20px rgba(0,0,0,0.15)', // Apply box-shadow here
+        top: 0,
+        height: "100vh",
+        transform: `translateY(${sheetY}px)`,
+        transition: isDragging ? "none" : "transform 0.25s ease",
+        boxShadow: '0 -6px 20px rgba(0,0,0,0.15)',
       }}
     >
       <div
@@ -111,11 +93,11 @@ const MobileStaticSheet: React.FC<MobileStaticSheetProps> = ({ children, classNa
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       ></div>
-      <div className="xyz-sheet-content flex-grow" // PROBLEM 2 FIX: Use flex-grow
+      <div className="xyz-sheet-content flex-grow"
         style={{
           overflowY: 'auto',
-          minHeight: '0', // PROBLEM 2 FIX: Allow flex item to shrink
-          WebkitOverflowScrolling: 'touch', // PROBLEM 2 FIX: For smooth iOS scrolling
+          minHeight: '0',
+          WebkitOverflowScrolling: 'touch',
         }}
       >
         {children}
