@@ -17,7 +17,7 @@ const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({ children, classNa
     }
     return {
       FULL: window.innerHeight * 0.15, // 15% from top (fully open)
-      MID: window.innerHeight * 0.60, // 60% from top (default open)
+      MID: window.innerHeight * 0.45, // Adjusted to 45% from top (default open, higher than before)
       MINI: window.innerHeight * 0.82, // 82% from top (mostly closed)
     };
   }, []);
