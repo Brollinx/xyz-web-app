@@ -15,8 +15,8 @@ const TopLeftControls: React.FC<TopLeftControlsProps> = ({ onOpenMenu }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Check if current path is a store details page or route page
-  const isStoreOrRoutePage = location.pathname.startsWith("/store/") || location.pathname.startsWith("/route/");
+  // Check if current path is a route page ONLY
+  const isRoutePage = location.pathname.startsWith("/route/");
 
   const handleBack = () => {
     if (window.history.length > 1) {
@@ -41,7 +41,7 @@ const TopLeftControls: React.FC<TopLeftControlsProps> = ({ onOpenMenu }) => {
         <Menu className="h-5 w-5" />
       </Button>
 
-      {isStoreOrRoutePage && (
+      {isRoutePage && (
         <Button
           variant="secondary"
           size="icon"
