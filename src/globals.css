@@ -1,0 +1,170 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 225 100% 96%; /* Soft Blue (#e7eeff) */
+    --foreground: 222.2 84% 4.9%; /* Deep Blue (dark text) */
+
+    --card: 0 0% 100%; /* White for interactive elements */
+    --card-foreground: 222.2 84% 4.9%; /* Deep Blue */
+
+    --popover: 0 0% 100%; /* White for interactive elements */
+    --popover-foreground: 222.2 84% 4.9%; /* Deep Blue */
+
+    --primary: 222.2 47.4% 11.2%; /* Deep Blue */
+    --primary-foreground: 210 40% 98%; /* Soft White */
+
+    --secondary: 0 0% 100%; /* White for interactive elements */
+    --secondary-foreground: 222.2 47.4% 11.2%; /* Deep Blue */
+
+    --muted: 0 0% 100%; /* White for interactive elements */
+    --muted-foreground: 215.4 16.3% 46.9%; /* Muted Gray */
+
+    --accent: 0 0% 100%; /* White for interactive elements */
+    --accent-foreground: 222.2 47.4% 11.2%; /* Deep Blue */
+
+    --destructive: 0 84.2% 60.2%; /* Red */
+    --destructive-foreground: 210 40% 98%; /* Soft White */
+
+    --border: 214.3 31.8% 91.4%; /* Cool Gray */
+    --input: 214.3 31.8% 91.4%; /* Cool Gray */
+    --ring: 222.2 84% 4.9%; /* Deep Blue */
+
+    --brand-accent: 27 87% 50%; /* Bright Orange */
+    --brand-accent-foreground: 0 0% 100%; /* White */
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --sheet-bg: 225 100% 96%; /* #e7eeff for sheet background */
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%; /* Deep Blue (dark background) */
+    --foreground: 210 40% 98%; /* Soft White */
+
+    --card: 222.2 84% 4.9%; /* Deep Blue */
+    --card-foreground: 210 40% 98%; /* Soft White */
+
+    --popover: 222.2 84% 4.9%; /* Deep Blue */
+    --popover-foreground: 210 40% 98%; /* Soft White */
+
+    --primary: 222.2 47.4% 11.2%; /* Deep Blue (consistent brand color) */
+    --primary-foreground: 210 40% 98%; /* Soft White (consistent brand color) */
+
+    --secondary: 217.2 32.6% 17.5%; /* Darker Cool Gray */
+    --secondary-foreground: 210 40% 98%; /* Soft White */
+
+    --muted: 217.2 32.6% 17.5%; /* Darker Cool Gray */
+    --muted-foreground: 215 20.2% 65.1%; /* Muted Gray */
+
+    --accent: 217.2 32.6% 17.5%; /* Darker Cool Gray */
+    --accent-foreground: 210 40% 98%; /* Soft White */
+
+    --destructive: 0 62.8% 30.6%; /* Darker Red */
+    --destructive-foreground: 210 40% 98%; /* Soft White */
+
+    --border: 217.2 32.6% 17.5%; /* Darker Cool Gray */
+    --input: 217.2 32.6% 17.5%; /* Darker Cool Gray */
+    --ring: 212.7 26.8% 83.9%; /* Lighter Blue */
+
+    --brand-accent: 27 87% 50%; /* Bright Orange (same for consistency) */
+    --brand-accent-foreground: 0 0% 100%; /* White */
+
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --sheet-bg: 222.2 84% 4.9%; /* Dark mode sheet background (Deep Blue) */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* New SimpleBottomSheet CSS */
+.xyz-simple-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: hsl(var(--sheet-bg)); /* Use CSS variable for theme support */
+  overflow: hidden;
+  z-index: 600;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  box-shadow: 0 -6px 20px rgba(0,0,0,0.15);
+}
+
+.xyz-simple-sheet::before {
+  content: "";
+  position: absolute;
+  top: -18px;
+  left: -20px;
+  right: -20px;
+  height: 22px;
+  background: hsl(var(--sheet-bg)); /* Match sheet background */
+  z-index: -1;
+}
+
+.xyz-sheet-content {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.xyz-drag-handle {
+  width: 50px;
+  height: 6px;
+  background: rgba(0,0,0,0.25);
+  border-radius: 6px;
+  margin: 12px auto 8px auto;
+}
+
+/* Barcode Scanner Active Styles */
+.barcode-scanner-active {
+  background: transparent !important;
+  --background: transparent !important;
+  --card: transparent !important;
+  --popover: transparent !important;
+  --secondary: transparent !important;
+  --muted: transparent !important;
+  --accent: transparent !important;
+  --border: transparent !important;
+  --input: transparent !important;
+  --ring: transparent !important;
+  --sheet-bg: transparent !important;
+}
+.barcode-scanner-active body {
+  background: transparent !important;
+}
+.barcode-scanner-active #root {
+  background: transparent !important;
+}
+.barcode-scanner-active .xyz-simple-sheet {
+  background-color: transparent !important;
+}
+.barcode-scanner-active .xyz-simple-sheet::before {
+  background: transparent !important;
+}
